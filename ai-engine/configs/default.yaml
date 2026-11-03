@@ -30,8 +30,8 @@ rules:
   track_lost_frames: 30 # source frames without a sighting before a track is closed
 
 plate:
-  enabled: false        # set true once models/plate/plate.pt is chosen (Task 9)
-  detector_model: models/plate/plate.pt
+  enabled: false        # set true after Task 9 checks models/plate/plate.onnx
+  detector_model: models/plate/plate.onnx
   ocr: easyocr
   max_attempts: 5
   min_ocr_confidence: 0.30

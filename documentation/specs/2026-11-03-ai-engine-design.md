@@ -50,7 +50,7 @@ marks a violation as confirmed.
 |---|---|---|
 | Motorcycle + person | Ultralytics YOLO11s pretrained on COCO, classes `person` (0) and `motorcycle` (3) only | Street-level viewpoint matches phone footage better than aerial VisDrone. No training needed. Built-in ByteTrack provides track IDs. |
 | Helmet | Existing `models/helmet/best.onnx` | Run on an enlarged **head crop** of each rider, never on the full frame. Fixes the small-object and car-as-helmet problems. |
-| Plate detection | Pretrained license-plate YOLO model (candidate chosen and verified Thursday) | Run on the motorcycle crop (expanded downward/backward). |
+| Plate detection | `morsetechlab/yolov11-license-plate-detection`, YOLO11s, ONNX export (`models/plate/plate.onnx`, AGPL-3.0). Approved by owner 2026-11-03 | Run on the motorcycle crop (expanded downward/backward). ONNX chosen over `.pt` because a pickle can execute code on load. Published mAP untrusted (train/test overlap); measured on RideSafe-400. |
 | Plate OCR | OCR library behind a `PlateReader` interface (candidate chosen Thursday; EasyOCR is the default fallback since `torch` is already installed) | Text normalised to uppercase alphanumerics. |
 
 Each model lives behind its own class with one public method. Replacing a model (e.g. a
@@ -215,10 +215,16 @@ Logging uses Python `logging` with an `[R-SAFE]` prefix; level set in config.
    structure on `tests/samples/*.jpg` (existing images).
 3. **Smoke test:** run `scripts/run_pipeline.py` on a short clip; assert output folders
    contain valid `violation.json`.
-4. **Real-world evaluation:** ~150 frames sampled from the owner's traffic footage,
-   hand-labelled (motorcycles, riders, helmet / no-helmet). `scripts/evaluate.py` reports
-   precision and recall for motorcycle detection and no-helmet flagging. These numbers,
-   not dataset mAP, are reported in the project documentation.
+4. **Evaluation on secondary data (approved 2026-11-03, replaces hand-labelling):**
+   - *Helmet violations:* run the full pipeline on HELMET `part_7` clips and compare its
+     violation records with HELMET's per-motorcycle labels (§11). Report precision and
+     recall of "motorcycle with ≥ 1 rider without helmet". No HELMET clip was used for
+     training, so every clip is unseen data.
+   - *Plates:* run the plate detector and OCR on RideSafe-400 videoset 4 frames; report
+     plate detection recall and exact-text OCR accuracy against `lp_number` labels.
+   - Results are reported as "on HELMET (Myanmar) / RideSafe-400 (India)", never as
+     Philippine performance. A short clip of the owner's own footage is shown in the demo
+     if available (not scored).
 5. Measured FPS on the owner's laptop is recorded in the README.
 
 ## 9. Known limitations
@@ -229,6 +235,25 @@ Logging uses Python `logging` with an `[R-SAFE]` prefix; level set in config.
 - COCO-pretrained detector is not tuned for Philippine traffic (tricycles, habal-habal
   with many riders); evaluation will show how much this matters.
 - CPU-only inference limits throughput; frame stride trades recall for speed.
+
+## 11. Data sources (secondary data, approved 2026-11-03)
+
+| Dataset | Used for | Location | License / citation |
+|---|---|---|---|
+| HELMET (Myanmar, 910 clips × 100 frames, 1920×1080, 10 fps); only `part_7` + `annotation.zip` + `data_split.csv` downloaded | Test video + helmet-violation evaluation | `assets/datasets/HELMET/` | CC BY 4.0. Cite: H. Lin, J. D. Deng, D. Albers, F. W. Siebert, "Helmet Use Detection of Tracked Motorcycles using CNN-based Multi-task Learning," IEEE Access, 2020, doi:10.1109/ACCESS.2020.3021357 |
+| RideSafe-400 (India dashcam); only videoset 4 part 2 videos + videoset 4 XML labels | Plate detection + OCR evaluation | `assets/datasets/RideSafe-400/` | CC BY-NC-SA (non-commercial). Cite the DashCop paper, arXiv:2503.00428 |
+
+**HELMET label format.** One CSV per clip: `track_id, frame_id (1–100), x, y, w, h, label`.
+The box covers the whole motorcycle with riders. `label` concatenates positions and
+helmet use, e.g. `DNoHelmetP1Helmet`: `D` = driver, `P0` = passenger in front of the
+driver, `P1`–`P3` = passengers behind. Ground truth "violation" = label contains
+`NoHelmet`.
+
+**RideSafe-400 label format.** CVAT-for-video XML per video; `license_plate` tracks with
+attribute `lp_number` (`#` = not readable; otherwise text, sometimes with `.` for unknown
+characters). Videoset 4 holds 19,485 plate boxes with text (860 distinct plates).
+
+No public, labelled Philippine motorcycle or plate dataset was found.
 
 ## 10. Schedule
 
