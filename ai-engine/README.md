@@ -46,8 +46,8 @@ Check everything works:
 ## 2. Run
 
 ```powershell
-# a video file, with a live window (press q to stop)
-.venv\Scripts\python scripts\run_pipeline.py --source C:\path\to\clip.mp4 --show
+# a video file, with a live window (press q to stop); --start-time = when it was filmed
+.venv\Scripts\python scripts\run_pipeline.py --source C:\path\to\clip.mp4 --show --start-time 2026-11-06T07:30:00
 
 # phone camera with the IP Webcam app (phone and laptop on the same Wi-Fi)
 .venv\Scripts\python scripts\run_pipeline.py --source http://192.168.1.5:8080/video --show
@@ -82,7 +82,13 @@ sink:
   http: { url: "http://<backend>/api/violations", timeout_s: 10 }
 ```
 
-Failed uploads are listed in `output/pending_upload.txt` for a retry.
+Failed uploads are listed in `output/pending_upload.txt` and re-sent automatically the
+next time the engine starts with `sink.kind: http`.
+
+**Times in records:** for live cameras `detected_at` is the moment the frame was
+processed. For video files it is `--start-time` plus the frame's position in the video;
+without `--start-time` the processing start time is used, so always give it for
+recorded evidence.
 
 ## 4. Settings (`configs/default.yaml`)
 
