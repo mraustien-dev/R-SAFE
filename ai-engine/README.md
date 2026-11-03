@@ -45,6 +45,27 @@ Check everything works:
 
 ## 2. Run
 
+### The window app (easiest)
+
+Double-click **`ai-engine\R-SAFE.bat`** (or run `.venv\Scripts\python scripts\rsafe_app.py`).
+Wait for "Ready" (models load in about 20 s), then:
+
+- **Choose video file**: pick any video on the laptop. Fill in *Video filmed at*
+  first (e.g. `2026-11-04 08:00`) so records get the real filming time.
+- **Connect camera**: the list shows the cameras found (built-in, USB).
+- **Connect phone**: type the address shown by the Android **IP Webcam** app
+  (e.g. `192.168.1.5:8080`; phone and laptop on the same Wi-Fi).
+- **Rotate**: turns a sideways video/camera upright (can be changed while running).
+- **Pause / Stop**, **Open evidence folder**, and a list of saved violations
+  (double-click one to open its folder). Stopping or closing the window still saves
+  the motorcycles that were being watched.
+
+Cameras and phones are always analysed on the newest picture (older pictures are
+skipped because the engine is slower than the camera). For short 10 fps clips use
+`R-SAFE.bat --config configs\demo.yaml` (every frame, output in `output\demo`).
+
+### Command line
+
 ```powershell
 # a video file, with a live window (press q to stop); --start-time = when it was filmed
 .venv\Scripts\python scripts\run_pipeline.py --source C:\path\to\clip.mp4 --show --start-time 2026-11-06T07:30:00
@@ -178,12 +199,13 @@ These plates are small (median 58×34 px) and two-line, so OCR mostly fails; the
 ```
 configs/default.yaml        all settings
 rsafe/                      the engine (video, detectors, association, rules, OCR, evidence, sinks, pipeline)
-scripts/run_pipeline.py     run the engine
+R-SAFE.bat                  double-click: window app (scripts/rsafe_app.py, rsafe/app/)
+scripts/run_pipeline.py     run the engine from the command line
 scripts/evaluate_helmet.py  HELMET evaluation
 scripts/sample_ridesafe_plates.py, scripts/measure_plates.py   plate measurement
 docs/violation_schema.md    integration contract for the backend
 tests/unit, tests/models, tests/smoke   pytest suites
-tools/                      older live-camera and model-inspection tools
+tools/                      older camera-test and model-inspection tools
 training/                   older dataset preparation scripts (VisDrone)
 ```
 

@@ -109,22 +109,33 @@ class Pipeline:
         return written
 
 
+class Engine:
+    """Loads the real models named in the config once (slow: a few seconds).
+
+    new_pipeline() gives a pipeline with a fresh motorcycle tracker, so each new video
+    or camera starts its track numbers and votes from zero without reloading the rest.
+    """
+
+    def __init__(self, cfg: Config):
+        from rsafe.detectors.helmet import HelmetClassifier
+        from rsafe.sinks.http_sink import make_sink
+
+        self.cfg = cfg
+        self.helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence)
+        self.plate_reader = None
+        if cfg.plate.enabled:
+            from rsafe.ocr.plate_reader import PlateReader
+
+            self.plate_reader = PlateReader(cfg.plate)
+        self.writer = EvidenceWriter(cfg.evidence.output_dir, cfg.evidence.timezone_offset_hours)
+        self.sink = make_sink(cfg.sink, cfg.evidence.output_dir)
+
+    def new_pipeline(self) -> Pipeline:
+        from rsafe.detectors.vehicle import VehicleDetector
+
+        return Pipeline(self.cfg, VehicleDetector(self.cfg.vehicle), self.helmet, self.plate_reader, self.writer, self.sink)
+
+
 def build_pipeline(cfg: Config) -> Pipeline:
     """Load the real models named in the config (slow: a few seconds)."""
-    from rsafe.detectors.helmet import HelmetClassifier
-    from rsafe.detectors.vehicle import VehicleDetector
-    from rsafe.sinks.http_sink import make_sink
-
-    plate_reader = None
-    if cfg.plate.enabled:
-        from rsafe.ocr.plate_reader import PlateReader
-
-        plate_reader = PlateReader(cfg.plate)
-    return Pipeline(
-        cfg,
-        VehicleDetector(cfg.vehicle),
-        HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence),
-        plate_reader,
-        EvidenceWriter(cfg.evidence.output_dir, cfg.evidence.timezone_offset_hours),
-        make_sink(cfg.sink, cfg.evidence.output_dir),
-    )
+    return Engine(cfg).new_pipeline()
