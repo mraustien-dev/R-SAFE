@@ -63,3 +63,4 @@ class TrackReport:
     plate: PlateResult
     seen_at: datetime
     rider_boxes: list[BBox] = field(default_factory=list)
+    frame_index: int = -1  # source frame of the evidence (used by evaluation)

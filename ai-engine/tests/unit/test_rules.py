@@ -203,3 +203,14 @@ def test_track_without_plate_attempts_is_not_visible():
 
 def test_wants_plate_for_unknown_track_is_true():
     assert make_tracker().wants_plate(99)
+
+
+def test_report_remembers_evidence_frame_index():
+    tracker = make_tracker()
+    feed(tracker, [NO] * 3, start=10)
+    tracker.update(13, frame(), moto(), [(1, rider(height=190), NO)], NOW)  # larger view -> new evidence
+    feed(tracker, [NO] * 3, start=14)
+
+    (report,) = tracker.flush()
+
+    assert report.frame_index == 13

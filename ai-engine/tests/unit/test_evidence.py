@@ -94,3 +94,17 @@ def test_writer_writes_plate_jpg_when_crop_present(tmp_path):
     assert (folder / "plate.jpg").exists()
     record = json.loads((folder / "violation.json").read_text(encoding="utf-8"))
     assert record["plate"] == {"text": "ABC1234", "ocr_confidence": 0.64, "status": "read"}
+
+
+def test_utc_time_gives_local_id_date_folder_and_detected_at(tmp_path):
+    from dataclasses import replace
+    from datetime import timezone
+
+    report = replace(make_report(), seen_at=datetime(2026, 11, 6, 20, 0, 5, tzinfo=timezone.utc))
+
+    folder = EvidenceWriter(tmp_path, tz_offset_hours=8).write(report, SOURCE, MODELS)
+    record = json.loads((folder / "violation.json").read_text(encoding="utf-8"))
+
+    assert record["violation_id"] == "V-20261107-040005-0007"
+    assert record["detected_at"] == "2026-11-07T04:00:05+08:00"
+    assert folder == tmp_path / "2026-11-07" / "V-20261107-040005-0007"

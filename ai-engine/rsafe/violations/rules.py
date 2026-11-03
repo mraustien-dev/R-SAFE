@@ -25,6 +25,7 @@ class _Evidence:
     rider_crop: np.ndarray
     rider_boxes: list[BBox]
     seen_at: datetime
+    frame_index: int
 
 
 @dataclass
@@ -91,6 +92,7 @@ class ViolationTracker:
                 rider_crop=_crop(frame, largest_violator.bbox),
                 rider_boxes=[rider.bbox for _, rider, _ in riders],
                 seen_at=now,
+                frame_index=frame_index,
             )
 
     def wants_plate(self, track_id: int) -> bool:
@@ -151,4 +153,5 @@ class ViolationTracker:
             plate=track.plate,
             seen_at=evidence.seen_at,
             rider_boxes=evidence.rider_boxes,
+            frame_index=evidence.frame_index,
         )

@@ -35,7 +35,7 @@ def build_record(
     plate = report.plate
     return {
         "schema_version": SCHEMA_VERSION,
-        "violation_id": make_violation_id(report.seen_at, report.track_id),
+        "violation_id": make_violation_id(_local_time(report.seen_at, tz_offset_hours), report.track_id),
         "type": "no_helmet",
         "status": "pending_review",
         "detected_at": _local_time(report.seen_at, tz_offset_hours).isoformat(timespec="seconds"),
