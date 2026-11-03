@@ -1,0 +1,20 @@
+# Python
+.venv/
+**/.venv/
+__pycache__/
+*.pyc
+
+# Datasets and archives (too large for git)
+assets/datasets/
+*.zip
+
+# Generated / local-only
+ai-engine/_archive/
+ai-engine/output/
+ai-engine/eval/frames/
+**/runs/
+*.pt
+ai-engine/tests/prediction_results/
+
+# Tooling scratch
+.superpowers/
