@@ -26,7 +26,7 @@ helmet:
 rules:
   window: 10            # last N confident helmet checks per rider
   min_confidence: 0.50
-  min_votes: 5          # no_helmet votes needed to flag
+  min_votes: 3          # no_helmet votes needed to flag (tuned on HELMET validation clips)
   track_lost_frames: 30 # source frames without a sighting before a track is closed
 
 plate:

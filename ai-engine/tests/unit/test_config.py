@@ -22,7 +22,7 @@ def write_config(tmp_path, **overrides):
 def test_default_config_loads_spec_defaults():
     cfg = load_config(DEFAULT_CONFIG)
 
-    assert cfg.rules.window == 10 and cfg.rules.min_votes == 5
+    assert cfg.rules.window == 10 and cfg.rules.min_votes == 3  # tuned (Task 11)
     assert cfg.rules.min_confidence == 0.50 and cfg.rules.track_lost_frames == 30
     assert cfg.helmet.head_ratio == 0.40 and cfg.helmet.pad_ratio == 0.20
     assert cfg.helmet.min_rider_height_px == 48
