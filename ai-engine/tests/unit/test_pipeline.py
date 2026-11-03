@@ -173,3 +173,29 @@ def test_annotate_draws_on_a_copy(tmp_path):
     shown = pipeline.annotate(FRAME)
 
     assert shown is not FRAME and shown.any() and not FRAME.any()
+
+
+class FailingOnceSink(FakeSink):
+    def send(self, folder):
+        if not self.sent:
+            self.sent.append(None)
+            raise OSError("disk full")
+        self.sent.append(folder)
+
+
+class TwoMotorcycles(FakeVehicle):
+    def track(self, frame):
+        self.calls += 1
+        motos = [Detection(MOTO_BOX, 0.9, "motorcycle", 1), Detection((400.0, 100.0, 600.0, 300.0), 0.9, "motorcycle", 2)]
+        riders = [Detection(RIDER_BOX, 0.9, "person"), Detection((450.0, 60.0, 550.0, 290.0), 0.9, "person")]
+        return motos, riders
+
+
+def test_saving_error_does_not_stop_other_reports(tmp_path):
+    writer = EvidenceWriter(tmp_path / "violations", CFG.evidence.timezone_offset_hours)
+    pipeline = Pipeline(CFG, TwoMotorcycles(), FakeHelmet("no_helmet"), None, writer, FailingOnceSink())
+
+    run(pipeline, 12)
+    written = pipeline.finish(SOURCE)
+
+    assert len(written) == 1 and len(records(tmp_path)) == 2

@@ -53,9 +53,14 @@ class HttpSink:
     def retry_pending(self) -> int:
         if not self.pending_file.exists():
             return 0
-        folders = [
-            Path(line) for line in self.pending_file.read_text(encoding="utf-8").splitlines() if line
-        ]
+        folders = []
+        for line in self.pending_file.read_text(encoding="utf-8").splitlines():
+            if not line:
+                continue
+            if (Path(line) / "violation.json").is_file():
+                folders.append(Path(line))
+            else:
+                logger.warning("[R-SAFE] Dropped from upload queue, folder no longer exists: %s", line)
         still_failing = [folder for folder in folders if not self._post(folder)]
         self.pending_file.write_text(
             "".join(f"{folder}\n" for folder in still_failing), encoding="utf-8"
@@ -65,5 +70,9 @@ class HttpSink:
 
 def make_sink(cfg: SinkConfig, output_dir: Path) -> Sink:
     if cfg.kind == "http":
-        return HttpSink(cfg.http.url, cfg.http.timeout_s, Path(output_dir).parent / "pending_upload.txt")
+        sink = HttpSink(cfg.http.url, cfg.http.timeout_s, Path(output_dir).parent / "pending_upload.txt")
+        resent = sink.retry_pending()
+        if resent:
+            logger.info("[R-SAFE] Re-sent %d queued violation(s)", resent)
+        return sink
     return FileSink()

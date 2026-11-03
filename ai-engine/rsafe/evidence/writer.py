@@ -82,6 +82,14 @@ def _draw_boxes(report: TrackReport) -> np.ndarray:
     return image
 
 
+def _save_jpg(path: Path, image: np.ndarray) -> None:
+    """Encode in memory, then write with Python: cv2.imwrite fails silently on non-ASCII paths."""
+    ok, encoded = cv2.imencode(".jpg", image)
+    if not ok:
+        raise OSError(f"Could not encode {path.name}")
+    path.write_bytes(encoded.tobytes())
+
+
 class EvidenceWriter:
     def __init__(self, output_dir: Path, tz_offset_hours: int):
         self.output_dir = Path(output_dir)
@@ -93,10 +101,10 @@ class EvidenceWriter:
         folder = self.output_dir / f"{local:%Y-%m-%d}" / record["violation_id"]
         folder.mkdir(parents=True, exist_ok=True)
 
-        cv2.imwrite(str(folder / "frame.jpg"), _draw_boxes(report))
-        cv2.imwrite(str(folder / "rider.jpg"), report.rider_crop)
+        _save_jpg(folder / "frame.jpg", _draw_boxes(report))
+        _save_jpg(folder / "rider.jpg", report.rider_crop)
         if report.plate.crop is not None:
-            cv2.imwrite(str(folder / "plate.jpg"), report.plate.crop)
+            _save_jpg(folder / "plate.jpg", report.plate.crop)
         (folder / "violation.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
 
         logger.info("[R-SAFE] Violation saved: %s", folder)

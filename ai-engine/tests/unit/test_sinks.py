@@ -94,3 +94,24 @@ def test_make_sink_selects_kind(tmp_path):
     http = make_sink(SinkConfig("http", HttpSinkConfig("http://b/api", 5)), output_dir)
     assert isinstance(http, HttpSink)
     assert http.pending_file == tmp_path / "output" / "pending_upload.txt"
+
+
+def test_http_sink_retry_drops_deleted_folder(tmp_path, violation_folder, monkeypatch):
+    monkeypatch.setattr(requests, "post", lambda *a, **k: FakeResponse(201))
+    pending = tmp_path / "pending_upload.txt"
+    pending.write_text(f"{tmp_path / 'deleted'}\n{violation_folder}\n", encoding="utf-8")
+
+    sent = HttpSink("http://backend/api", 5, pending).retry_pending()
+
+    assert sent == 1 and pending.read_text(encoding="utf-8") == ""
+
+
+def test_make_http_sink_resends_pending_uploads(tmp_path, violation_folder, monkeypatch):
+    posted = []
+    monkeypatch.setattr(requests, "post", lambda url, files, timeout: posted.append(files) or FakeResponse(200))
+    output_dir = tmp_path / "violations"
+    (tmp_path / "pending_upload.txt").write_text(f"{violation_folder}\n", encoding="utf-8")
+
+    make_sink(SinkConfig(kind="http", http=HttpSinkConfig(url="http://backend/api", timeout_s=5)), output_dir)
+
+    assert len(posted) == 1 and (tmp_path / "pending_upload.txt").read_text(encoding="utf-8") == ""

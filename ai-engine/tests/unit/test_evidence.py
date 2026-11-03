@@ -108,3 +108,21 @@ def test_utc_time_gives_local_id_date_folder_and_detected_at(tmp_path):
     assert record["violation_id"] == "V-20261107-040005-0007"
     assert record["detected_at"] == "2026-11-07T04:00:05+08:00"
     assert folder == tmp_path / "2026-11-07" / "V-20261107-040005-0007"
+
+
+def test_writes_images_under_non_ascii_folder(tmp_path):
+    folder = EvidenceWriter(tmp_path / "Peña", tz_offset_hours=8).write(make_report(), SOURCE, MODELS)
+
+    assert (folder / "frame.jpg").stat().st_size > 0 and (folder / "rider.jpg").stat().st_size > 0
+
+
+def test_failed_image_save_raises_instead_of_writing_json(tmp_path, monkeypatch):
+    import pytest
+
+    import rsafe.evidence.writer as writer_module
+
+    monkeypatch.setattr(writer_module.cv2, "imencode", lambda *a, **k: (False, None))
+
+    with pytest.raises(OSError, match="frame.jpg"):
+        EvidenceWriter(tmp_path, tz_offset_hours=8).write(make_report(), SOURCE, MODELS)
+    assert not list(tmp_path.rglob("violation.json"))

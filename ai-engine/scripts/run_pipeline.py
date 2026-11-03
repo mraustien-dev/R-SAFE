@@ -9,6 +9,10 @@ Usage (from ai-engine\):
   .venv\Scripts\python scripts\run_pipeline.py --source 0 --max-frames 900
 
 With --show, press q in the video window to stop.
+
+For a recorded file, detected_at = --start-time (when filming began; default: now)
+plus the frame's position in the video. Give --start-time so records show when the
+riders were really filmed, e.g. --start-time 2026-11-06T07:30:00 (Philippine time).
 """
 
 import argparse
@@ -22,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rsafe.config import ConfigError, load_config  # noqa: E402
 from rsafe.pipeline import build_pipeline  # noqa: E402
-from rsafe.video.source import VideoSource  # noqa: E402
+from rsafe.video.source import VideoSource, frame_timestamp, video_fps  # noqa: E402
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
 WINDOW = "R-SAFE (q to quit)"
@@ -34,6 +38,8 @@ def main() -> int:
     parser.add_argument("--config", type=Path, default=AI_ENGINE_DIR / "configs" / "default.yaml")
     parser.add_argument("--show", action="store_true", help="show the annotated video")
     parser.add_argument("--max-frames", type=int, help="stop after this many source frames")
+    parser.add_argument("--start-time", type=datetime.fromisoformat,
+                        help="when a recorded file started, e.g. 2026-11-06T07:30:00 (local time)")
     args = parser.parse_args()
 
     try:
@@ -51,6 +57,9 @@ def main() -> int:
     pipeline = build_pipeline(cfg)
     print(f"[R-SAFE] Reading {source.info.kind}: {source.info.uri}")
 
+    is_file = source.info.kind == "file"
+    file_start = args.start_time or datetime.now(timezone.utc)
+    fps = video_fps(source.info.uri) if is_file else 0.0
     processed = 0
     written = []
     started = time.perf_counter()
@@ -60,7 +69,8 @@ def main() -> int:
                 break
             if index % cfg.video.frame_stride:
                 continue
-            written += pipeline.process_frame(index, frame, source.info, datetime.now(timezone.utc))
+            now = frame_timestamp(file_start, index, fps) if is_file else datetime.now(timezone.utc)
+            written += pipeline.process_frame(index, frame, source.info, now)
             processed += 1
             if args.show:
                 import cv2

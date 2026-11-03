@@ -98,9 +98,13 @@ class Pipeline:
     def _emit(self, reports: list[TrackReport], source: SourceInfo) -> list[Path]:
         written = []
         for report in reports:
-            folder = self.writer.write(report, source, self.models)
-            logger.info("[R-SAFE] Potential violation saved: %s", folder)
-            self.sink.send(folder)
+            try:
+                folder = self.writer.write(report, source, self.models)
+                logger.info("[R-SAFE] Potential violation saved: %s", folder)
+                self.sink.send(folder)
+            except Exception:
+                logger.exception("[R-SAFE] Could not save or send the record for track %s", report.track_id)
+                continue
             written.append(folder)
         return written
 

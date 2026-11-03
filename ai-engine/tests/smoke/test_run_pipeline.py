@@ -45,3 +45,12 @@ def test_cli_missing_source_file_exits_2(tmp_path):
     )
 
     assert run.returncode == 2 and "nope.mp4" in run.stderr
+
+
+def test_cli_rejects_bad_start_time(tmp_path):
+    run = subprocess.run(
+        [sys.executable, str(AI_ENGINE_DIR / "scripts" / "run_pipeline.py"), "--source", "x.mp4", "--start-time", "yesterday"],
+        capture_output=True, text=True, timeout=120,
+    )
+
+    assert run.returncode == 2 and "--start-time" in run.stderr

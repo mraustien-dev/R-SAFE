@@ -214,3 +214,13 @@ def test_report_remembers_evidence_frame_index():
     (report,) = tracker.flush()
 
     assert report.frame_index == 13
+
+
+def test_closed_track_id_coming_back_is_not_reported_twice():
+    tracker = make_tracker()
+    feed(tracker, [NO] * 6, start=0)
+    assert len(tracker.collect_finished(40)) == 1  # lost > 30 frames -> reported
+
+    feed(tracker, [NO] * 6, start=41)  # tracker re-finds the same motorcycle (same ID)
+
+    assert tracker.collect_finished(100) == [] and tracker.flush() == []

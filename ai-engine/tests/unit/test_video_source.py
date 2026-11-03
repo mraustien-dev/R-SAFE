@@ -112,3 +112,14 @@ def test_close_stops_stream(monkeypatch):
     source.close()
 
     assert list(frames) == []
+
+
+def test_frame_timestamp_follows_video_position():
+    from datetime import datetime, timedelta, timezone
+
+    from rsafe.video.source import frame_timestamp
+
+    start = datetime(2026, 11, 6, 6, 0, 0, tzinfo=timezone.utc)
+
+    assert frame_timestamp(start, 75, 25.0) == start + timedelta(seconds=3)
+    assert frame_timestamp(start, 75, 0.0) == start  # unknown fps -> start time

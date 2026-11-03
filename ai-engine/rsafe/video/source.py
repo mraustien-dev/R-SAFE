@@ -7,6 +7,7 @@ waiting 1, 2, 4, ... seconds (capped) between attempts, until close() is called.
 import logging
 import time
 from collections.abc import Callable, Iterator
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import cv2
@@ -17,6 +18,19 @@ from rsafe.types import SourceInfo
 logger = logging.getLogger("rsafe.video")
 
 STREAM_PREFIXES = ("http://", "https://", "rtsp://")
+
+
+def frame_timestamp(start: datetime, index: int, fps: float) -> datetime:
+    """When frame `index` of a recorded video was filmed, given when the video started."""
+    return start + timedelta(seconds=index / fps) if fps > 0 else start
+
+
+def video_fps(path: str) -> float:
+    capture = cv2.VideoCapture(path)
+    try:
+        return float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+    finally:
+        capture.release()
 
 
 class VideoSource:

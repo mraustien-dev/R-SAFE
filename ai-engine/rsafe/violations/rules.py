@@ -59,6 +59,8 @@ class ViolationTracker:
         self.rules = rules
         self.max_plate_attempts = max_plate_attempts
         self._tracks: dict[int, _TrackState] = {}
+        # ByteTrack can re-find a motorcycle after we closed it; never report the same ID twice
+        self._closed: set[int] = set()
 
     def update(
         self,
@@ -68,6 +70,8 @@ class ViolationTracker:
         riders: list[tuple[int, Detection, HelmetResult | None]],
         now: datetime,
     ) -> None:
+        if motorcycle.track_id in self._closed:
+            return
         track = self._tracks.setdefault(motorcycle.track_id, _TrackState(last_seen=frame_index))
         track.last_seen = frame_index
 
@@ -122,6 +126,7 @@ class ViolationTracker:
         reports = []
         for track_id in track_ids:
             track = self._tracks.pop(track_id)
+            self._closed.add(track_id)
             report = self._report(track_id, track)
             if report is not None:
                 reports.append(report)
