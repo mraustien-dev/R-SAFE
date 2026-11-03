@@ -1,0 +1,50 @@
+# R-SAFE AI engine settings.
+# Relative model paths are resolved from the ai-engine folder.
+
+video:
+  source: ""            # file path, IP Webcam URL (http://<phone-ip>:8080/video) or camera index ("0")
+  camera_id: cam-01
+  frame_stride: 3       # process every Nth frame (CPU-only laptop)
+
+vehicle:
+  model: models/vehicle/yolo11s.pt   # COCO-pretrained; downloaded by Ultralytics if missing
+  confidence: 0.35
+  imgsz: 640
+  tracker: bytetrack.yaml
+
+association:
+  expand_ratio: 0.15    # enlarge motorcycle box by this fraction per side when matching riders
+  max_riders: 3
+
+helmet:
+  model: models/helmet/best.onnx
+  confidence: 0.25
+  head_ratio: 0.40      # top fraction of the rider box used as the head crop
+  pad_ratio: 0.20
+  min_rider_height_px: 48
+
+rules:
+  window: 10            # last N confident helmet checks per rider
+  min_confidence: 0.50
+  min_votes: 5          # no_helmet votes needed to flag
+  track_lost_frames: 30 # source frames without a sighting before a track is closed
+
+plate:
+  enabled: false        # set true once models/plate/plate.pt is chosen (Task 9)
+  detector_model: models/plate/plate.pt
+  ocr: easyocr
+  max_attempts: 5
+  min_ocr_confidence: 0.30
+
+evidence:
+  output_dir: output/violations
+  timezone_offset_hours: 8   # Philippine time
+
+sink:
+  kind: file            # file | http
+  http:
+    url: ""
+    timeout_s: 10
+
+logging:
+  level: INFO
