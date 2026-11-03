@@ -30,11 +30,11 @@ rules:
   track_lost_frames: 30 # source frames without a sighting before a track is closed
 
 plate:
-  enabled: false        # set true after Task 9 checks models/plate/plate.onnx
+  enabled: true         # measured in Task 9: models/plate/SOURCE.md
   detector_model: models/plate/plate.onnx
   ocr: easyocr
   max_attempts: 5
-  min_ocr_confidence: 0.30
+  min_ocr_confidence: 0.90   # lower cutoffs mostly showed wrong plate text (SOURCE.md)
 
 evidence:
   output_dir: output/violations

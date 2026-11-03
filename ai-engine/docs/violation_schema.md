@@ -41,7 +41,7 @@ ends.
   "motorcycle": { "confidence": 0.88, "bbox": [412.0, 220.0, 610.0, 540.0] },
   "plate": { "text": "ABC1234", "ocr_confidence": 0.64, "status": "read" },
   "evidence": { "frame": "frame.jpg", "rider": "rider.jpg", "plate": "plate.jpg" },
-  "models": { "vehicle": "yolo11s-coco", "helmet": "helmet-best.onnx", "plate": "plate.pt", "ocr": "easyocr" }
+  "models": { "vehicle": "yolo11s-coco", "helmet": "helmet-best.onnx", "plate": "plate-yolo11s.onnx", "ocr": "easyocr" }
 }
 ```
 
