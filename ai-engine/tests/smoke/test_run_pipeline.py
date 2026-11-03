@@ -28,12 +28,17 @@ def test_cli_smoke(tmp_path):
 
     run = subprocess.run(
         [sys.executable, str(AI_ENGINE_DIR / "scripts" / "run_pipeline.py"),
-         "--source", str(video), "--config", str(config), "--max-frames", "30"],
+         "--source", str(video), "--config", str(config), "--max-frames", "30",
+         "--save-video", str(tmp_path / "analysed.mp4")],
         capture_output=True, text=True, timeout=600,
     )
 
     assert run.returncode == 0, run.stderr
     assert "frames processed : 10" in run.stdout
+    saved = cv2.VideoCapture(str(tmp_path / "analysed.mp4"))
+    assert int(saved.get(cv2.CAP_PROP_FRAME_COUNT)) == 10  # one per analysed frame
+    assert saved.get(cv2.CAP_PROP_FPS) == pytest.approx(10 / 3, abs=0.01)  # plays at the video's speed
+    saved.release()
     for record in (tmp_path / "violations").rglob("violation.json"):
         assert json.loads(record.read_text(encoding="utf-8"))["status"] == "pending_review"
 

@@ -335,9 +335,9 @@ class HelmetClassifier:
 
     name = "helmet-best.onnx"
 
-    def __init__(self, model_path: Path, confidence: float):
+    def __init__(self, model_path: Path, confidence: float, imgsz: int = 640):
         self.detector = HelmetDetector(
-            model_path=model_path, confidence_threshold=confidence, debug=False
+            model_path=model_path, confidence_threshold=confidence, image_size=imgsz, debug=False
         )
 
     def classify(self, crop: np.ndarray) -> HelmetResult | None:

@@ -1,12 +1,15 @@
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 
+import cv2
 import numpy as np
 import pytest
 
 from rsafe.app.session import (
     AnalysisSession,
     LatestFrameReader,
+    VideoRecorder,
     find_cameras,
     normalize_stream_url,
     rotate_frame,
@@ -208,3 +211,95 @@ def test_pause_blocks_until_resumed():
     session.resume()
     worker.join(2)
     assert not worker.is_alive() and len(pipeline.calls) == 3
+
+
+class FakeRecorder:
+    def __init__(self):
+        self.frames, self.closed = [], False
+
+    def write(self, frame):
+        self.frames.append(frame.shape)
+
+    def close(self):
+        self.closed = True
+
+
+def make_session(pipeline, source, **options):
+    defaults = dict(stride=3, rotation=lambda: 0, start_time=START, fps=10.0,
+                    on_frame=lambda image, stats: None, on_saved=lambda folder: None)
+    return AnalysisSession(pipeline, source, **{**defaults, **options})
+
+
+def test_realtime_file_shows_every_frame_at_video_speed():
+    pipeline, shown = FakePipeline(), []
+    session = make_session(pipeline, FakeSource("file", 10), fps=20.0, realtime=True,
+                           on_frame=lambda image, stats: shown.append(image.shape))
+    started = time.perf_counter()
+
+    session.run()
+
+    assert time.perf_counter() - started >= 0.4  # 10 frames at 20 fps = 0.5 s
+    assert len(shown) == 10  # every frame displayed
+    indices = [c[0] for c in pipeline.calls]
+    assert indices and indices == [3 * n for n in range(len(indices))]  # analysed: newest only
+    assert pipeline.finished == 1
+
+
+def test_realtime_file_records_film_time_of_the_analysed_frame():
+    pipeline = FakePipeline()
+    session = make_session(pipeline, FakeSource("file", 3), fps=20.0, realtime=True)
+
+    session.run()
+
+    for _, _, when in pipeline.calls:
+        offset = (when - START).total_seconds()
+        assert offset in (0.0, 0.05, 0.1)
+
+
+def test_live_session_displays_every_frame_read():
+    shown = []
+    session = make_session(FakePipeline(), FakeSource("ip_webcam", 6), fps=0.0,
+                           on_frame=lambda image, stats: shown.append(1))
+
+    session.run()
+
+    assert len(shown) == 6
+
+
+def test_recorder_gets_analysed_frames_and_is_closed():
+    recorder = FakeRecorder()
+    session = make_session(FakePipeline(), FakeSource("file", 10), rotation=lambda: 90, recorder=recorder)
+
+    session.run()
+
+    assert recorder.frames == [(2, 4, 3)] * 4 and recorder.closed
+
+
+def test_recorder_in_realtime_mode_gets_every_frame():
+    recorder = FakeRecorder()
+    session = make_session(FakePipeline(), FakeSource("file", 8), fps=50.0, realtime=True, recorder=recorder)
+
+    session.run()
+
+    assert len(recorder.frames) == 8 and recorder.closed
+
+
+def test_video_recorder_writes_playable_file(tmp_path):
+    path = tmp_path / "out" / "analysed.mp4"
+    recorder = VideoRecorder(path, fps=10.0)
+    for index in range(5):
+        frame = np.full((48, 64, 3), index * 40, np.uint8)
+        recorder.write(frame if index != 3 else rotate_frame(frame, 90))  # size change is resized
+    recorder.close()
+
+    capture = cv2.VideoCapture(str(path))
+    assert int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) == 5
+    assert (int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))) == (64, 48)
+    capture.release()
+
+
+def test_video_recorder_without_frames_writes_nothing(tmp_path):
+    recorder = VideoRecorder(tmp_path / "none.mp4", fps=10.0)
+    recorder.close()
+
+    assert not (tmp_path / "none.mp4").exists() and recorder.path is None

@@ -40,3 +40,12 @@ def test_empty_array_returns_none(classifier):
 
 def test_classifier_name(classifier):
     assert classifier.name == "helmet-best.onnx"
+
+
+@pytest.mark.parametrize("imgsz", [416, 320])
+def test_smaller_input_size_still_judges_samples(imgsz):
+    small = HelmetClassifier(MODEL, confidence=0.25, imgsz=imgsz)
+
+    assert small.detector.image_size == imgsz
+    assert small.classify(cv2.imread(str(SAMPLES / "rider_with_helmet.jpg"))).label == "helmet"
+    assert small.classify(cv2.imread(str(SAMPLES / "rider_without_helmet.jpg"))).label == "no_helmet"

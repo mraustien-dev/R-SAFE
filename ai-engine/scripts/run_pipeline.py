@@ -25,6 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rsafe.config import ConfigError, load_config  # noqa: E402
+from rsafe.app.session import VideoRecorder  # noqa: E402
 from rsafe.pipeline import build_pipeline  # noqa: E402
 from rsafe.video.source import VideoSource, frame_timestamp, video_fps  # noqa: E402
 
@@ -41,6 +42,8 @@ def main() -> int:
     parser.add_argument("--max-frames", type=int, help="stop after this many source frames")
     parser.add_argument("--start-time", type=datetime.fromisoformat,
                         help="when a recorded file started, e.g. 2026-11-06T07:30:00 (local time)")
+    parser.add_argument("--save-video", type=Path,
+                        help="also save the analysed frames with boxes as an .mp4 (video files only)")
     args = parser.parse_args()
 
     try:
@@ -67,6 +70,13 @@ def main() -> int:
     is_file = source.info.kind == "file"
     file_start = args.start_time or datetime.now(timezone.utc)
     fps = video_fps(source.info.uri) if is_file else 0.0
+    recorder = None
+    if args.save_video:
+        if is_file and fps > 0:
+            # one frame per analysed frame, so the saved video plays at the original speed
+            recorder = VideoRecorder(args.save_video, fps / cfg.video.frame_stride)
+        else:
+            print("[R-SAFE] --save-video works for video files only; ignored", file=sys.stderr)
     processed = 0
     written = []
     started = time.perf_counter()
@@ -79,6 +89,8 @@ def main() -> int:
             now = frame_timestamp(file_start, index, fps) if is_file else datetime.now(timezone.utc)
             written += pipeline.process_frame(index, frame, source.info, now)
             processed += 1
+            if recorder:
+                recorder.write(pipeline.annotate(frame))
             if args.show:
                 import cv2
 
@@ -90,6 +102,8 @@ def main() -> int:
     finally:
         source.close()
         written += pipeline.finish(source.info)
+        if recorder:
+            recorder.close()
         if args.show:
             import cv2
 
@@ -101,6 +115,8 @@ def main() -> int:
     print(f"  average speed    : {processed / elapsed if elapsed else 0:.1f} processed frames/s")
     print(f"  violations saved : {len(written)} (pending_review)")
     print(f"  output folder    : {cfg.evidence.output_dir}")
+    if recorder and recorder.path:
+        print(f"  analysed video   : {recorder.path}")
     return 0
 
 

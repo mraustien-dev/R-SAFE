@@ -22,6 +22,7 @@ helmet:
   head_ratio: 0.40      # top fraction of the rider box used as the head crop
   pad_ratio: 0.20
   min_rider_height_px: 48
+  imgsz: 640            # head crops are resized to this square; smaller = faster
 
 rules:
   window: 10            # last N confident helmet checks per rider

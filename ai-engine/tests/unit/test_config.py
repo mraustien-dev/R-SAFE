@@ -25,7 +25,7 @@ def test_default_config_loads_spec_defaults():
     assert cfg.rules.window == 10 and cfg.rules.min_votes == 3  # tuned (Task 11)
     assert cfg.rules.min_confidence == 0.50 and cfg.rules.track_lost_frames == 30
     assert cfg.helmet.head_ratio == 0.40 and cfg.helmet.pad_ratio == 0.20
-    assert cfg.helmet.min_rider_height_px == 48
+    assert cfg.helmet.min_rider_height_px == 48 and cfg.helmet.imgsz == 640
     assert cfg.association.expand_ratio == 0.15 and cfg.association.max_riders == 3
     assert cfg.plate.max_attempts == 5
     assert cfg.video.frame_stride == 3

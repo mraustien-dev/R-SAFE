@@ -23,7 +23,7 @@ from PIL import Image, ImageTk
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from rsafe.app.session import AnalysisSession, find_cameras, normalize_stream_url  # noqa: E402
+from rsafe.app.session import AnalysisSession, VideoRecorder, find_cameras, normalize_stream_url  # noqa: E402
 from rsafe.config import ConfigError, load_config  # noqa: E402
 from rsafe.video.source import VideoSource, video_fps  # noqa: E402
 
@@ -57,6 +57,7 @@ class RsafeApp:
         self._last_image = None
         self._closing = False
         self._source_name = ""
+        self._frames_waiting = 0
 
         root.title("R-SAFE | Helmet Violation Detection")
         root.geometry("1280x760")
@@ -103,6 +104,11 @@ class RsafeApp:
         self.filmed_entry = tk.Entry(bar2, width=18, bg=PANEL, fg=TEXT, insertbackground=TEXT)
         self.filmed_entry.pack(side="left", padx=4)
         self._label(bar2, "e.g. 2026-11-04 08:00", fg="#8899a6").pack(side="left")
+        self.realtime_var = tk.BooleanVar(value=False)
+        self.record_var = tk.BooleanVar(value=False)
+        for text, variable in (("Real-time playback", self.realtime_var), ("Save analysed video", self.record_var)):
+            tk.Checkbutton(bar2, text=text, variable=variable, bg=BG, fg=TEXT, selectcolor=PANEL,
+                           activebackground=BG, activeforeground=TEXT, font=("Segoe UI", 9)).pack(side="left", padx=(12, 0))
         self.folder_button = self._button(bar2, "Open evidence folder", self.open_evidence_folder)
         self.folder_button.pack(side="right")
         self.stop_button = self._button(bar2, "Stop", self.stop, state="disabled")
@@ -158,7 +164,10 @@ class RsafeApp:
     def _run_session(self, session: AnalysisSession, name: str) -> None:
         try:
             session.run()
-            self.events.put(("done", f"Finished {name}. Violations saved: {session.saved}."))
+            message = f"Finished {name}. Violations saved: {session.saved}."
+            if session.recorder and session.recorder.path:
+                message += f"  Analysed video: {session.recorder.path}"
+            self.events.put(("done", message))
         except Exception as error:  # noqa: BLE001 - shown to the user
             logging.exception("[R-SAFE] Analysis stopped by an error")
             self.events.put(("done", f"Stopped by an error: {error}"))
@@ -169,6 +178,7 @@ class RsafeApp:
             while True:
                 kind, *payload = self.events.get_nowait()
                 if kind == "frame":
+                    self._frames_waiting -= 1
                     latest_frame = payload  # only draw the newest one
                 elif kind == "saved":
                     self._add_saved(payload[0])
@@ -237,20 +247,37 @@ class RsafeApp:
             messagebox.showerror("R-SAFE", "This video can't be opened. Try an .mp4 file "
                                            "(iPhone: set Camera > Formats to 'Most Compatible').")
             return
+        is_file = source.info.kind == "file"
+        realtime = is_file and self.realtime_var.get()
+        recorder = None
+        if self.record_var.get() and is_file and fps > 0:
+            # analysed frames only (every stride-th) unless real-time, so it plays at normal speed
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target = Path(self.cfg.evidence.output_dir).parent / "videos" / f"{Path(source_text).stem}_analysed_{stamp}.mp4"
+            recorder = VideoRecorder(target, fps if realtime else fps / self.cfg.video.frame_stride)
         self.session = AnalysisSession(
             self.engine.new_pipeline(), source,
             stride=self.cfg.video.frame_stride, rotation=lambda: self.rotation,
-            start_time=start, fps=fps,
-            on_frame=lambda image, stats: self.events.put(("frame", image, stats)),
+            start_time=start, fps=fps, realtime=realtime, recorder=recorder,
+            on_frame=lambda image, stats: self._put_frame(image, stats),
             on_saved=lambda folder: self.events.put(("saved", folder)),
         )
         self._source_name = name
         self._set_sources_enabled(False)
         self.pause_button.configure(state="normal", text="Pause")
         self.stop_button.configure(state="normal")
-        self._set_status(f"Connecting to {name}..." if source.info.kind != "file" else f"Starting {name}...")
+        if self.record_var.get() and not is_file:
+            messagebox.showinfo("R-SAFE", "Save analysed video works for video files only; "
+                                          "the camera will be analysed without saving a video.")
+        self._set_status(f"Connecting to {name}..." if not is_file else f"Starting {name}...")
         self.worker = threading.Thread(target=self._run_session, args=(self.session, name), daemon=True)
         self.worker.start()
+
+    def _put_frame(self, image, stats) -> None:
+        # real-time modes send ~25 frames a second; drop extras the window hasn't drawn yet
+        if self._frames_waiting < 3:
+            self._frames_waiting += 1
+            self.events.put(("frame", image, stats))
 
     # ---------------------------------------------------------------- controls
     def toggle_pause(self) -> None:

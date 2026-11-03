@@ -68,7 +68,7 @@ class Pipeline:
         return shown
 
     def _analyse(self, frame_index: int, frame: np.ndarray, now: datetime) -> None:
-        self._last_drawn = []
+        drawn = []  # swapped in when complete: annotate() may run in another thread
         motorcycles, persons = self.vehicle.track(frame)
         motorcycles = [moto for moto in motorcycles if moto.track_id is not None]
         assoc, helmet_cfg = self.cfg.association, self.cfg.helmet
@@ -82,7 +82,7 @@ class Pipeline:
                     crop = head_crop(frame, rider.bbox, helmet_cfg.head_ratio, helmet_cfg.pad_ratio)
                     result = self.helmet.classify(crop) if crop is not None else None
                 riders.append((position, rider, result))
-            self._last_drawn.append((moto, [(rider, result) for _, rider, result in riders]))
+            drawn.append((moto, [(rider, result) for _, rider, result in riders]))
             self.tracker.update(frame_index, frame, moto, riders, now)
 
             # OCR is slow on CPU: read plates only while a confident no-helmet rider is in view
@@ -94,6 +94,7 @@ class Pipeline:
             )
             if self.plate_reader and violator_seen and self.tracker.wants_plate(moto.track_id):
                 self.tracker.add_plate(moto.track_id, self.plate_reader.read(frame, moto.bbox))
+        self._last_drawn = drawn
 
     def _emit(self, reports: list[TrackReport], source: SourceInfo) -> list[Path]:
         written = []
@@ -121,7 +122,7 @@ class Engine:
         from rsafe.sinks.http_sink import make_sink
 
         self.cfg = cfg
-        self.helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence)
+        self.helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence, cfg.helmet.imgsz)
         self.plate_reader = None
         if cfg.plate.enabled:
             from rsafe.ocr.plate_reader import PlateReader

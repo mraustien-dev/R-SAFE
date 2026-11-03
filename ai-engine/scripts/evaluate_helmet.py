@@ -69,6 +69,8 @@ def main() -> None:
     parser.add_argument("--vehicle-conf", type=float)
     parser.add_argument("--helmet-conf", type=float)
     parser.add_argument("--min-votes", type=int)
+    parser.add_argument("--vehicle-imgsz", type=int)
+    parser.add_argument("--helmet-imgsz", type=int)
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -79,6 +81,10 @@ def main() -> None:
         cfg = dataclasses.replace(cfg, helmet=dataclasses.replace(cfg.helmet, confidence=args.helmet_conf))
     if args.min_votes is not None:
         cfg = dataclasses.replace(cfg, rules=dataclasses.replace(cfg.rules, min_votes=args.min_votes))
+    if args.vehicle_imgsz is not None:
+        cfg = dataclasses.replace(cfg, vehicle=dataclasses.replace(cfg.vehicle, imgsz=args.vehicle_imgsz))
+    if args.helmet_imgsz is not None:
+        cfg = dataclasses.replace(cfg, helmet=dataclasses.replace(cfg.helmet, imgsz=args.helmet_imgsz))
 
     with open(args.split, newline="", encoding="utf-8") as handle:
         split = {row["video_id"]: row["Set"] for row in csv.DictReader(handle)}
@@ -91,7 +97,7 @@ def main() -> None:
 
     if args.out.exists():
         shutil.rmtree(args.out)
-    helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence)
+    helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence, cfg.helmet.imgsz)
     totals: dict[str, dict[str, int]] = {}
     frames_done, started = 0, time.perf_counter()
     for clip in clips:
@@ -123,6 +129,7 @@ def main() -> None:
         "set": args.set,
         "clips": [clip.name for clip in clips],
         "settings": {"vehicle.confidence": cfg.vehicle.confidence, "helmet.confidence": cfg.helmet.confidence,
+                     "vehicle.imgsz": cfg.vehicle.imgsz, "helmet.imgsz": cfg.helmet.imgsz,
                      "rules.min_votes": cfg.rules.min_votes},
         "totals": totals,
         "frames_per_second": round(frames_done / elapsed, 2),

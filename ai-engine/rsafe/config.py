@@ -48,6 +48,7 @@ class HelmetConfig:
     head_ratio: float
     pad_ratio: float
     min_rider_height_px: int
+    imgsz: int  # helmet model input size (smaller = faster)
 
 
 @dataclass(frozen=True)
