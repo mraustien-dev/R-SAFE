@@ -30,6 +30,7 @@ from rsafe.video.source import VideoSource, frame_timestamp, video_fps  # noqa: 
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
 WINDOW = "R-SAFE (q to quit)"
+WINDOW_SIZE = (1280, 720)
 
 
 def main() -> int:
@@ -56,6 +57,12 @@ def main() -> int:
     print("[R-SAFE] Loading models...")
     pipeline = build_pipeline(cfg)
     print(f"[R-SAFE] Reading {source.info.kind}: {source.info.uri}")
+    if args.show:
+        import cv2
+
+        # resizable window that fits a laptop screen; drag its corner to change the size
+        cv2.namedWindow(WINDOW, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(WINDOW, *WINDOW_SIZE)
 
     is_file = source.info.kind == "file"
     file_start = args.start_time or datetime.now(timezone.utc)
