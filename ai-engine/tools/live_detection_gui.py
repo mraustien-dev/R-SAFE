@@ -9,7 +9,12 @@ from PIL import Image, ImageTk
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from detection.helmet_detector import HelmetDetector
+from rsafe.detectors.helmet import HelmetDetector
+
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logging.getLogger("rsafe").setLevel(logging.DEBUG)
 
 
 # ============================================================

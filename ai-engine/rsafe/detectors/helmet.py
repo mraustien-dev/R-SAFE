@@ -1,8 +1,13 @@
+import logging
 from pathlib import Path
 
 import cv2
 import numpy as np
 import onnxruntime as ort
+
+from rsafe.types import HelmetResult
+
+logger = logging.getLogger("rsafe.detectors.helmet")
 
 
 class HelmetDetector:
@@ -25,7 +30,7 @@ class HelmetDetector:
     ):
         if model_path is None:
             model_path = (
-                Path(__file__).resolve().parents[1]
+                Path(__file__).resolve().parents[2]
                 / "models"
                 / "helmet"
                 / "best.onnx"
@@ -56,10 +61,10 @@ class HelmetDetector:
         }
 
         if self.debug:
-            print("[R-SAFE] ONNX model loaded")
-            print(f"[R-SAFE] Input name: {self.input_name}")
-            print(f"[R-SAFE] Input shape: {self.input_shape}")
-            print(f"[R-SAFE] Confidence threshold: {self.confidence_threshold}")
+            logger.debug("[R-SAFE] ONNX model loaded")
+            logger.debug(f"[R-SAFE] Input name: {self.input_name}")
+            logger.debug(f"[R-SAFE] Input shape: {self.input_shape}")
+            logger.debug(f"[R-SAFE] Confidence threshold: {self.confidence_threshold}")
 
         # Warn when ONNX expects a fixed size different from the selected size.
         if len(self.input_shape) == 4:
@@ -70,7 +75,7 @@ class HelmetDetector:
                 and isinstance(model_w, int)
                 and (model_h != self.image_size or model_w != self.image_size)
             ):
-                print(
+                logger.warning(
                     "[R-SAFE WARNING] Selected image_size "
                     f"{self.image_size} does not match model input "
                     f"{model_w}x{model_h}. Using model's fixed input size."
@@ -175,17 +180,17 @@ class HelmetDetector:
         best_scores = np.max(class_scores, axis=1)
 
         if self.debug and not self._printed_output_info:
-            print(f"[R-SAFE DEBUG] Raw output shape: {np.asarray(outputs[0]).shape}")
-            print(f"[R-SAFE DEBUG] Normalized predictions: {predictions.shape}")
-            print(
+            logger.debug(f"[R-SAFE DEBUG] Raw output shape: {np.asarray(outputs[0]).shape}")
+            logger.debug(f"[R-SAFE DEBUG] Normalized predictions: {predictions.shape}")
+            logger.debug(
                 "[R-SAFE DEBUG] Maximum Helmet score: "
                 f"{float(np.max(class_scores[:, 0])):.4f}"
             )
-            print(
+            logger.debug(
                 "[R-SAFE DEBUG] Maximum No-Helmet score: "
                 f"{float(np.max(class_scores[:, 1])):.4f}"
             )
-            print(
+            logger.debug(
                 "[R-SAFE DEBUG] Candidates at threshold "
                 f"{self.confidence_threshold}: "
                 f"{int(np.count_nonzero(best_scores >= self.confidence_threshold))}"
@@ -272,7 +277,7 @@ class HelmetDetector:
             # Print count occasionally only when detections appear, keeping
             # the console useful without flooding it with zero-result lines.
             if detections:
-                print(
+                logger.debug(
                     "[R-SAFE DEBUG] Detections: "
                     + ", ".join(
                         f'{d["class_name"]}={d["confidence"]:.2f}'
@@ -320,3 +325,26 @@ class HelmetDetector:
             )
 
         return output
+
+
+LABELS = {"Helmet": "helmet", "No-Helmet": "no_helmet"}
+
+
+class HelmetClassifier:
+    """Judge one head crop as helmet / no_helmet using the strongest helmet-model box."""
+
+    name = "helmet-best.onnx"
+
+    def __init__(self, model_path: Path, confidence: float):
+        self.detector = HelmetDetector(
+            model_path=model_path, confidence_threshold=confidence, debug=False
+        )
+
+    def classify(self, crop: np.ndarray) -> HelmetResult | None:
+        if crop is None or crop.size == 0:
+            return None
+        detections = self.detector.detect(crop)
+        if not detections:
+            return None
+        best = max(detections, key=lambda d: d["confidence"])
+        return HelmetResult(LABELS[best["class_name"]], best["confidence"])

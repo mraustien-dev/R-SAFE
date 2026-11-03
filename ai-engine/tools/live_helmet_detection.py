@@ -7,7 +7,12 @@ from pathlib import Path
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(AI_ENGINE_DIR))
 
-from detection.helmet_detector import HelmetDetector
+from rsafe.detectors.helmet import HelmetDetector
+
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logging.getLogger("rsafe").setLevel(logging.DEBUG)
 
 CAMERA_URL = "http://10.242.108.138:8080/video"
 
