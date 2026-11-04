@@ -60,7 +60,7 @@ Wait for "Ready" (models load in about 20 s), then:
   analyses the newest frame it can keep up with. On a slow laptop it sees too few frames
   to flag riders (0 records on the 10 s demo clip at 0.8 frames/s), so use the normal
   mode for evidence; on a GPU laptop it analyses almost every frame.
-- **Save analysed video**: writes the video with boxes to `outputideos\`, playing at
+- **Save analysed video**: writes the video with boxes to `output\videos\`, playing at
   normal speed (good for presentations).
 - **Performance**: the level picked for this computer (see "Fits the computer" below).
 - **Pause / Stop**, **Open evidence folder**, and a list of saved violations
