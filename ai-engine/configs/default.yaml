@@ -49,3 +49,8 @@ sink:
 
 logging:
   level: INFO
+
+performance:
+  device: auto          # auto (use an NVIDIA GPU if there is one) | cpu | cuda
+  level: auto           # auto (speed test on first start) | low | balanced | high | custom
+                        # custom = use frame_stride / imgsz above exactly as written

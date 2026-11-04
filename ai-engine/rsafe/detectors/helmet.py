@@ -27,6 +27,7 @@ class HelmetDetector:
         iou_threshold=0.45,
         image_size=640,
         debug=True,
+        providers=None,
     ):
         if model_path is None:
             model_path = (
@@ -48,7 +49,7 @@ class HelmetDetector:
 
         self.session = ort.InferenceSession(
             str(self.model_path),
-            providers=["CPUExecutionProvider"],
+            providers=providers or ["CPUExecutionProvider"],
         )
 
         model_input = self.session.get_inputs()[0]
@@ -335,9 +336,10 @@ class HelmetClassifier:
 
     name = "helmet-best.onnx"
 
-    def __init__(self, model_path: Path, confidence: float, imgsz: int = 640):
+    def __init__(self, model_path: Path, confidence: float, imgsz: int = 640, providers=None):
         self.detector = HelmetDetector(
-            model_path=model_path, confidence_threshold=confidence, image_size=imgsz, debug=False
+            model_path=model_path, confidence_threshold=confidence, image_size=imgsz, debug=False,
+            providers=providers,
         )
 
     def classify(self, crop: np.ndarray) -> HelmetResult | None:

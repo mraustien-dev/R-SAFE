@@ -1,9 +1,10 @@
 """Run every stage on each frame: track -> riders -> helmet -> votes -> plate -> evidence -> sink.
 
-Components are passed in (not built here) so tests can use fakes; build_pipeline()
-makes the real ones from the config.
+Components are passed in (not built here) so tests can use fakes; Engine loads the
+real ones from the config.
 """
 
+import dataclasses
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -113,30 +114,51 @@ class Pipeline:
 class Engine:
     """Loads the real models named in the config once (slow: a few seconds).
 
+    It uses an NVIDIA GPU when there is one, and picks a performance level for this
+    computer (see rsafe/hardware.py); `performance` says what was chosen.
     new_pipeline() gives a pipeline with a fresh motorcycle tracker, so each new video
     or camera starts its track numbers and votes from zero without reloading the rest.
     """
 
     def __init__(self, cfg: Config):
+        import onnxruntime
+        import torch
+
         from rsafe.detectors.helmet import HelmetClassifier
+        from rsafe.detectors.vehicle import VehicleDetector
+        from rsafe.hardware import apply_level, hardware_name, measure_fps, onnx_providers, resolve_device, tune_for_hardware
         from rsafe.sinks.http_sink import make_sink
 
-        self.cfg = cfg
-        self.helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence, cfg.helmet.imgsz)
+        self.base_cfg = cfg
+        self.device = resolve_device(cfg.performance.device, torch.cuda.is_available())
+        # every level uses the same helmet input size, so the helmet model is loaded once
+        helmet_size = apply_level(cfg, "low").helmet.imgsz if cfg.performance.level != "custom" else cfg.helmet.imgsz
+        self.helmet = HelmetClassifier(cfg.helmet.model, cfg.helmet.confidence, helmet_size,
+                                       onnx_providers(self.device, onnxruntime.get_available_providers()))
+        self.performance = tune_for_hardware(
+            cfg.performance.level, self.device, hardware_name(self.device),
+            Path(cfg.evidence.output_dir).parent / "hardware_profile.json",
+            lambda: measure_fps(VehicleDetector(apply_level(cfg, "low").vehicle, self.device), self.helmet),
+        )
+        self.cfg = apply_level(cfg, self.performance.level)
+        logger.info("[R-SAFE] %s", self.performance.describe())
         self.plate_reader = None
         if cfg.plate.enabled:
             from rsafe.ocr.plate_reader import PlateReader
 
-            self.plate_reader = PlateReader(cfg.plate)
+            self.plate_reader = PlateReader(cfg.plate, device=self.device)
         self.writer = EvidenceWriter(cfg.evidence.output_dir, cfg.evidence.timezone_offset_hours)
         self.sink = make_sink(cfg.sink, cfg.evidence.output_dir)
+
+    def set_level(self, level: str) -> None:
+        """Change the performance level for the next pipeline (e.g. from the app's menu)."""
+        from rsafe.hardware import apply_level
+
+        self.cfg = apply_level(self.base_cfg, level)
+        self.performance = dataclasses.replace(self.performance, level=level)
 
     def new_pipeline(self) -> Pipeline:
         from rsafe.detectors.vehicle import VehicleDetector
 
-        return Pipeline(self.cfg, VehicleDetector(self.cfg.vehicle), self.helmet, self.plate_reader, self.writer, self.sink)
-
-
-def build_pipeline(cfg: Config) -> Pipeline:
-    """Load the real models named in the config (slow: a few seconds)."""
-    return Engine(cfg).new_pipeline()
+        return Pipeline(self.cfg, VehicleDetector(self.cfg.vehicle, self.device), self.helmet,
+                        self.plate_reader, self.writer, self.sink)

@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rsafe.config import ConfigError, load_config  # noqa: E402
 from rsafe.app.session import VideoRecorder  # noqa: E402
-from rsafe.pipeline import build_pipeline  # noqa: E402
+from rsafe.pipeline import Engine  # noqa: E402
 from rsafe.video.source import VideoSource, frame_timestamp, video_fps  # noqa: E402
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
@@ -58,7 +58,10 @@ def main() -> int:
 
     logging.basicConfig(level=cfg.logging.level, format="[R-SAFE] %(levelname)s %(name)s: %(message)s")
     print("[R-SAFE] Loading models...")
-    pipeline = build_pipeline(cfg)
+    engine = Engine(cfg)
+    print(f"[R-SAFE] {engine.performance.describe()}")
+    cfg = engine.cfg  # settings for this computer's performance level
+    pipeline = engine.new_pipeline()
     print(f"[R-SAFE] Reading {source.info.kind}: {source.info.uri}")
     if args.show:
         import cv2

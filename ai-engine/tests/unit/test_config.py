@@ -32,6 +32,7 @@ def test_default_config_loads_spec_defaults():
     assert cfg.evidence.timezone_offset_hours == 8
     assert cfg.helmet.model.is_absolute() and cfg.helmet.model.exists()
     assert cfg.evidence.output_dir.is_absolute()
+    assert cfg.performance.device == "auto" and cfg.performance.level == "auto"
 
 
 def test_missing_helmet_model_names_path(tmp_path):

@@ -13,6 +13,8 @@ import yaml
 logger = logging.getLogger("rsafe.config")
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
+PERFORMANCE_DEVICES = ("auto", "cpu", "cuda")
+PERFORMANCE_LEVELS = ("auto", "low", "balanced", "high", "custom")
 SINK_KINDS = {"file", "http"}
 
 
@@ -92,6 +94,12 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True)
+class PerformanceConfig:
+    device: str  # auto | cpu | cuda
+    level: str  # auto | low | balanced | high | custom (custom = use the values above as written)
+
+
+@dataclass(frozen=True)
 class Config:
     video: VideoConfig
     vehicle: VehicleConfig
@@ -102,6 +110,7 @@ class Config:
     evidence: EvidenceConfig
     sink: SinkConfig
     logging: LoggingConfig
+    performance: PerformanceConfig
 
 
 def _resolve(path_text: str) -> Path:
@@ -178,6 +187,12 @@ def load_config(path: str | Path) -> Config:
 
     logging_config = LoggingConfig(**_section(data, "logging", LoggingConfig))
 
+    performance = PerformanceConfig(**_section(data, "performance", PerformanceConfig))
+    if performance.device not in PERFORMANCE_DEVICES:
+        raise ConfigError(f"Invalid performance.device: {performance.device!r} (expected one of {PERFORMANCE_DEVICES})")
+    if performance.level not in PERFORMANCE_LEVELS:
+        raise ConfigError(f"Invalid performance.level: {performance.level!r} (expected one of {PERFORMANCE_LEVELS})")
+
     return Config(
         video=video,
         vehicle=vehicle,
@@ -188,4 +203,5 @@ def load_config(path: str | Path) -> Config:
         evidence=evidence,
         sink=sink,
         logging=logging_config,
+        performance=performance,
     )

@@ -23,6 +23,7 @@ def test_cli_smoke(tmp_path):
 
     settings = yaml.safe_load((AI_ENGINE_DIR / "configs" / "default.yaml").read_text(encoding="utf-8"))
     settings["evidence"]["output_dir"] = str(tmp_path / "violations")
+    settings["performance"]["level"] = "low"  # every 3rd frame on any computer
     config = tmp_path / "config.yaml"
     config.write_text(yaml.safe_dump(settings), encoding="utf-8")
 

@@ -56,6 +56,13 @@ Wait for "Ready" (models load in about 20 s), then:
 - **Connect phone**: type the address shown by the Android **IP Webcam** app
   (e.g. `192.168.1.5:8080`; phone and laptop on the same Wi-Fi).
 - **Rotate**: turns a sideways video/camera upright (can be changed while running).
+- **Real-time playback** (video files): the video plays at normal speed and the engine
+  analyses the newest frame it can keep up with. On a slow laptop it sees too few frames
+  to flag riders (0 records on the 10 s demo clip at 0.8 frames/s), so use the normal
+  mode for evidence; on a GPU laptop it analyses almost every frame.
+- **Save analysed video**: writes the video with boxes to `outputideos\`, playing at
+  normal speed (good for presentations).
+- **Performance**: the level picked for this computer (see "Fits the computer" below).
 - **Pause / Stop**, **Open evidence folder**, and a list of saved violations
   (double-click one to open its folder). Stopping or closing the window still saves
   the motorcycles that were being watched.
@@ -84,6 +91,24 @@ phone stream reconnects by itself (waits 1, 2, 4 … up to 30 s).
 
 Camera tips: film **departing** traffic (plates are on the back), from the roadside,
 in daylight, with riders at least ~150 px tall in the picture.
+
+### Fits the computer automatically
+
+At start-up the engine uses an NVIDIA GPU if there is one, and on the first start it
+runs a ~10 s speed test and picks a level (saved in `output\hardware_profile.json`,
+measured again when the hardware changes):
+
+| Level | Picked when | Every Nth frame | Motorcycle / helmet input size |
+|---|---|---|---|
+| low | below 3 frames/s (this laptop: Ryzen 3 3250U, 0.8 frames/s) | 3 | 640 / 640 |
+| balanced | 3 to 15 frames/s | 2 | 640 / 640 |
+| high | 15 frames/s or more (e.g. NVIDIA GPU) | 1 | 960 / 640 |
+
+All levels keep the 640 helmet size: smaller sizes were faster but raised more false
+alarms on HELMET (training clips: 8 → 11-12). The 960 motorcycle size of "high" has
+**not been measured for accuracy yet**: run `evaluate_helmet.py --vehicle-imgsz 960` on the
+GPU machine before relying on it. To use a GPU, install the CUDA builds of PyTorch
+(CUDA 12.8+ for RTX 50 cards) and `onnxruntime-gpu`; nothing else changes.
 
 ## 3. Output (what teammates receive)
 
@@ -116,7 +141,7 @@ recorded evidence.
 | Key | Default | Meaning |
 |---|---|---|
 | `video.camera_id` | `cam-01` | Name written into every record. |
-| `video.frame_stride` | `3` | Process every 3rd frame (speed vs. recall). |
+| `video.frame_stride` | `3` | Process every 3rd frame (speed vs. recall); set by the performance level unless `custom`. |
 | `vehicle.confidence` | `0.35` | Minimum motorcycle/person detection score. |
 | `association.max_riders` | `3` | Riders kept per motorcycle. |
 | `helmet.confidence` | `0.25` | Minimum helmet-model score. |
@@ -126,6 +151,9 @@ recorded evidence.
 | `rules.track_lost_frames` | `30` | Frames without the motorcycle before its record is written. |
 | `plate.enabled` | `true` | Plate box + OCR on. |
 | `plate.min_ocr_confidence` | `0.90` | Below this the plate is `unreadable` (no text shown). Kept high because lower values mostly showed wrong text. |
+| `helmet.imgsz` | `640` | Helmet model input size (set by the performance level). |
+| `performance.device` | `auto` | `auto` (GPU if available), `cpu` or `cuda`. |
+| `performance.level` | `auto` | `auto`, `low`, `balanced`, `high`, or `custom` (use `frame_stride` / `imgsz` exactly as written). |
 | `evidence.output_dir` | `output/violations` | Where folders go. |
 | `sink.kind` | `file` | `file` or `http`. |
 

@@ -51,3 +51,7 @@ sink:
 
 logging:
   level: INFO
+
+performance:
+  device: auto          # auto (use an NVIDIA GPU if there is one) | cpu | cuda
+  level: custom         # custom: keep frame_stride 1 above (short demo clips)

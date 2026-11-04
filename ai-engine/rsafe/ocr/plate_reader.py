@@ -75,24 +75,24 @@ def upscale_for_ocr(crop: np.ndarray) -> np.ndarray:
 class EasyOcr:
     name = "easyocr"
 
-    def __init__(self):
+    def __init__(self, gpu: bool = False):
         import easyocr  # slow import; only loaded when plates are enabled
 
-        self.reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+        self.reader = easyocr.Reader(["en"], gpu=gpu, verbose=False)
 
     def read(self, crop: np.ndarray) -> tuple[str, float]:
         return join_fragments(self.reader.readtext(upscale_for_ocr(crop), allowlist=PLATE_CHARS))
 
 
 class PlateReader:
-    def __init__(self, cfg: PlateConfig, detector=None, ocr=None):
+    def __init__(self, cfg: PlateConfig, detector=None, ocr=None, device: str = "cpu"):
         if detector is None:
             from rsafe.detectors.plate import PlateDetector
 
-            detector = PlateDetector(cfg.detector_model)
+            detector = PlateDetector(cfg.detector_model, device=device)
         self.cfg = cfg
         self.detector = detector
-        self.ocr = ocr if ocr is not None else EasyOcr()
+        self.ocr = ocr if ocr is not None else EasyOcr(gpu=device == "cuda")
         self.detector_name = detector.name
         self.ocr_name = self.ocr.name
 

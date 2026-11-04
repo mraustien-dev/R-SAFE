@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rsafe.app.session import AnalysisSession, VideoRecorder, find_cameras, normalize_stream_url  # noqa: E402
 from rsafe.config import ConfigError, load_config  # noqa: E402
+from rsafe.hardware import LEVELS  # noqa: E402
 from rsafe.video.source import VideoSource, video_fps  # noqa: E402
 
 AI_ENGINE_DIR = Path(__file__).resolve().parents[1]
@@ -57,6 +58,7 @@ class RsafeApp:
         self._last_image = None
         self._closing = False
         self._source_name = ""
+        self._auto_level = "low"
         self._frames_waiting = 0
 
         root.title("R-SAFE | Helmet Violation Detection")
@@ -110,6 +112,11 @@ class RsafeApp:
             tk.Checkbutton(bar2, text=text, variable=variable, bg=BG, fg=TEXT, selectcolor=PANEL,
                            activebackground=BG, activeforeground=TEXT, font=("Segoe UI", 9)).pack(side="left", padx=(12, 0))
         self.folder_button = self._button(bar2, "Open evidence folder", self.open_evidence_folder)
+        self.level_box = ttk.Combobox(bar2, state="disabled", width=16, values=["Loading..."])
+        self.level_box.current(0)
+        self.level_box.bind("<<ComboboxSelected>>", self._level_changed)
+        self.level_box.pack(side="right", padx=(0, 12))
+        self._label(bar2, "Performance:").pack(side="right")
         self.folder_button.pack(side="right")
         self.stop_button = self._button(bar2, "Stop", self.stop, state="disabled")
         self.stop_button.pack(side="right", padx=4)
@@ -184,6 +191,8 @@ class RsafeApp:
                     self._add_saved(payload[0])
                 elif kind == "ready":
                     self.engine = payload[0]
+                    self._auto_level = self.engine.performance.level
+                    self._fill_levels()
                     self._set_status("Ready. Choose a video file, a camera, or a phone.")
                 elif kind == "cameras":
                     self._fill_cameras(payload[0])
@@ -254,10 +263,10 @@ class RsafeApp:
             # analysed frames only (every stride-th) unless real-time, so it plays at normal speed
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             target = Path(self.cfg.evidence.output_dir).parent / "videos" / f"{Path(source_text).stem}_analysed_{stamp}.mp4"
-            recorder = VideoRecorder(target, fps if realtime else fps / self.cfg.video.frame_stride)
+            recorder = VideoRecorder(target, fps if realtime else fps / self.engine.cfg.video.frame_stride)
         self.session = AnalysisSession(
             self.engine.new_pipeline(), source,
-            stride=self.cfg.video.frame_stride, rotation=lambda: self.rotation,
+            stride=self.engine.cfg.video.frame_stride, rotation=lambda: self.rotation,
             start_time=start, fps=fps, realtime=realtime, recorder=recorder,
             on_frame=lambda image, stats: self._put_frame(image, stats),
             on_saved=lambda folder: self.events.put(("saved", folder)),
@@ -306,6 +315,22 @@ class RsafeApp:
         self.stop_button.configure(state="disabled")
         self._set_status(message)
 
+    def _fill_levels(self) -> None:
+        names = [f"Auto ({self._auto_level})"] + [level.capitalize() for level in LEVELS]
+        self.level_box.configure(values=names, state="readonly")
+        self.level_box.current(0)
+        self._show_hardware()
+
+    def _level_changed(self, event=None) -> None:
+        choice = self.level_box.current()
+        self.engine.set_level(self._auto_level if choice == 0 else list(LEVELS)[choice - 1])
+        self._show_hardware()
+
+    def _show_hardware(self) -> None:
+        cfg = self.engine.cfg
+        self.metrics.configure(text=f"{self.engine.performance.describe()}  "
+                                    f"(every {cfg.video.frame_stride} frame(s), size {cfg.vehicle.imgsz})")
+
     def _rotation_changed(self, event=None) -> None:
         self.rotation = ROTATION_DEGREES[self.rotation_box.get()]
 
@@ -343,6 +368,8 @@ class RsafeApp:
         state = "normal" if enabled else "disabled"
         for button in (self.file_button, self.camera_button, self.phone_button):
             button.configure(state=state)
+        if self.engine is not None:  # the level applies from the next video/camera on
+            self.level_box.configure(state="readonly" if enabled else "disabled")
 
     def _set_status(self, text: str) -> None:
         self.status.configure(text=text)

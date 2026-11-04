@@ -40,8 +40,9 @@ def parse_results(
 class VehicleDetector:
     name = "yolo11s-coco"
 
-    def __init__(self, cfg: VehicleConfig):
+    def __init__(self, cfg: VehicleConfig, device: str = "cpu"):
         self.cfg = cfg
+        self.device = 0 if device == "cuda" else "cpu"
         self.model = YOLO(cfg.model)
         logger.info("[R-SAFE] Vehicle model loaded: %s", cfg.model)
 
@@ -53,6 +54,7 @@ class VehicleDetector:
             conf=self.cfg.confidence,
             imgsz=self.cfg.imgsz,
             tracker=self.cfg.tracker,
+            device=self.device,
             verbose=False,
         )[0]
         boxes = result.boxes
