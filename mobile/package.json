@@ -30,7 +30,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "node --test test/lib.test.mjs"
+    "test": "node --test test/lib.test.mjs test/outbox.test.mjs"
   },
   "private": true,
   "devDependencies": {

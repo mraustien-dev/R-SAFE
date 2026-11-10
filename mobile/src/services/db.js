@@ -72,6 +72,16 @@ export async function nextSeq() {
   return seq;
 }
 
+/** Violation rows in one upload state ('pending' | 'sent' | 'rejected'), newest first. Read only. */
+export async function listOutbox(state, limit = 50, offset = 0) {
+  const db = await getDb();
+  return db.getAllAsync(
+    `SELECT id, seq, state, body, files, attempts, last_error, created_at, sent_at, case_no
+     FROM outbox WHERE kind = 'violation' AND state = ? ORDER BY id DESC LIMIT ? OFFSET ?`,
+    state, limit, offset,
+  );
+}
+
 export async function queueCounts() {
   const db = await getDb();
   const rows = await db.getAllAsync(

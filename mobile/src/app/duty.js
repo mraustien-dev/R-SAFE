@@ -1,13 +1,15 @@
 // On duty: live camera detection. Violations are saved, signed and uploaded automatically;
-// the officer cannot view, edit, delete or hold back evidence from this screen.
+// the officer cannot edit, delete or hold back evidence from this screen. The Uploads panel
+// only shows upload progress.
 import { useEffect, useRef, useState } from 'react';
-import { PermissionsAndroid, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { PermissionsAndroid, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { RsafeCameraView } from '../../modules/rsafe-detector';
 import { currentSession, endDuty, onSession, recordViolation, refreshLocation, signOut, startDuty } from '../services/session';
 import { onSyncStatus } from '../services/sync';
 import { Button, ErrorText, Screen, colors, styles } from '../ui';
+import UploadsPanel from '../components/UploadsPanel';
 
 function KeepAwake() {
   useKeepAwake();
@@ -23,6 +25,7 @@ export default function Duty() {
   const [busy, setBusy] = useState(false);
   const [captured, setCaptured] = useState(0);
   const [cameraOk, setCameraOk] = useState(false);
+  const [showUploads, setShowUploads] = useState(false);
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const pendingWrites = useRef(Promise.resolve());
@@ -160,7 +163,12 @@ export default function Duty() {
             {onDuty ? `On duty since ${new Date(session.duty.started_at).toLocaleTimeString()}` : 'Off duty'}
           </Text>
         </View>
-        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between' }]}>
+        <Pressable
+          onPress={() => setShowUploads(true)}
+          accessibilityRole="button"
+          accessibilityHint="Shows the upload progress of each violation"
+          style={({ pressed }) => [styles.card, { flexDirection: 'row', justifyContent: 'space-between', opacity: pressed ? 0.8 : 1 }]}
+        >
           <View>
             <Text style={{ color: colors.muted }}>Captured this duty</Text>
             <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink }}>{captured}</Text>
@@ -168,12 +176,15 @@ export default function Duty() {
           <View style={{ alignItems: 'flex-end', flexShrink: 1, marginLeft: 12 }}>
             <Text style={{ color: colors.muted }}>Upload</Text>
             <Text style={{ color: sync?.blocked ? colors.danger : colors.ink, textAlign: 'right' }}>{syncLine}</Text>
+            <Text style={{ color: colors.primary, fontWeight: '600', marginTop: 4 }}>See uploads ›</Text>
           </View>
-        </View>
+        </Pressable>
         <ErrorText>{error}</ErrorText>
         <Button title={onDuty ? 'End duty' : 'Start duty'} kind={onDuty ? 'danger' : 'primary'} onPress={toggleDuty} busy={busy} disabled={!cameraOk} />
         <Button title="Sign out" kind="secondary" onPress={leave} disabled={busy} />
       </ScrollView>
+      {/* drawn over the duty screen, not a new route: the camera keeps detecting underneath */}
+      {showUploads ? <UploadsPanel onClose={() => setShowUploads(false)} /> : null}
     </Screen>
   );
 }
