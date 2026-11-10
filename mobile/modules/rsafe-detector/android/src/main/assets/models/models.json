@@ -1,0 +1,48 @@
+{
+  "models": {
+    "vehicle": {
+      "file": "vehicle.onnx",
+      "source": "ai-engine/models/vehicle/export/yolo11s.onnx",
+      "source_sha256": "56607555401d67a5a2ab63cf7884b7a172e9dff8f3892ba5f6827e24c7d97013",
+      "sha256": "e3a588d461c3457ca303e05a6be1958c445f32579dd35983c6b0e1587309d71e",
+      "bytes": 10131957,
+      "input_size": 480,
+      "classes": 80,
+      "precision": "int8 (QDQ, per-channel weights, 16-bit class scores, float decode)",
+      "calibration_images": 100,
+      "check_agreement": 0.897
+    },
+    "helmet": {
+      "file": "helmet.onnx",
+      "source": "ai-engine/models/helmet/best.onnx",
+      "source_sha256": "83f1df0734a65e6a1dd6dd0b76fb80a08de1533fc9533b9c1ed53fccd604a22b",
+      "sha256": "94d5616062f1f533a1829cb1fd5d449bee1723ead73fc51318a9f54417614f6a",
+      "bytes": 10098142,
+      "input_size": 320,
+      "classes": 2,
+      "precision": "int8 (QDQ, per-channel weights, 16-bit class scores, float decode)",
+      "calibration_images": 160,
+      "check_agreement": 0.922
+    },
+    "plate": {
+      "file": "plate.onnx",
+      "source": "ai-engine/models/plate/plate.onnx",
+      "source_sha256": "301e4239442b3a533c868ad1cc2ec38933e75ca53e5c94c58755cff2cfb294b7",
+      "sha256": "f4a8f0b763eec02d36f58d242057c7f814252169b0fc343a4f7a8e0ea4ea3315",
+      "bytes": 10083772,
+      "input_size": 640,
+      "classes": 1,
+      "precision": "int8 (QDQ, per-channel weights, 16-bit class scores, float decode)",
+      "calibration_images": 64,
+      "check_agreement": 0.941
+    },
+    "ocr": {
+      "file": "mlkit-text-latin",
+      "precision": "ML Kit bundled model"
+    }
+  },
+  "tool": "ai-engine/tools/export_mobile_models.py",
+  "tool_version": "1",
+  "onnxruntime": "1.31.1",
+  "exported_at": "2026-11-09T10:06:28+00:00"
+}

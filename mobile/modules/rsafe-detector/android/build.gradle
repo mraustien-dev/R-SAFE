@@ -1,0 +1,39 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.rsafedetector'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.rsafedetector"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  androidResources {
+    noCompress += ["onnx"]
+  }
+  lintOptions {
+    abortOnError false
+  }
+  testOptions {
+    unitTests.returnDefaultValues = true
+  }
+}
+
+dependencies {
+  // On-device models (same .onnx files as the laptop engine)
+  implementation "com.microsoft.onnxruntime:onnxruntime-android:1.22.0" // 1.22+: native libs built for 16 KB pages
+  // Camera frames
+  def camerax = "1.4.1"
+  implementation "androidx.camera:camera-core:$camerax"
+  implementation "androidx.camera:camera-camera2:$camerax"
+  implementation "androidx.camera:camera-lifecycle:$camerax"
+  implementation "androidx.camera:camera-view:$camerax"
+  // Plate OCR, model bundled in the APK so it works offline
+  implementation "com.google.mlkit:text-recognition:16.0.1"
+
+  testImplementation "junit:junit:4.13.2"
+}
