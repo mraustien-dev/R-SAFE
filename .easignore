@@ -1,0 +1,25 @@
+# Expo cloud build upload (EAS reads this file from the repo root, not from mobile/).
+# Only the phone app is needed. Unlike .gitignore, the mobile .onnx models ARE uploaded.
+/.venv/
+/.superpowers/
+/ai-engine/
+/assets/
+/backend/
+/database/
+/documentation/
+/frontend/
+node_modules/
+.expo/
+dist/
+web-build/
+/mobile/android/
+/mobile/ios/
+/mobile/modules/rsafe-detector/android/build/
+/mobile/build.log
+.env*
+*.jks
+*.p8
+*.p12
+*.key
+npm-debug.*
+.DS_Store
