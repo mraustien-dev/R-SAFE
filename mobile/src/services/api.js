@@ -2,6 +2,7 @@
 import { API_URL, APP_VERSION, ensureIdentity, extra, signText } from './device';
 import { requestMessage } from '../lib/record';
 import { kvSet } from './db';
+import { File } from 'expo-file-system';
 
 export class ApiError extends Error {
   constructor(status, code, detail) {
@@ -92,7 +93,8 @@ export async function sendViolation(row) {
   form.append('record_signature', row.signature);
   const files = JSON.parse(row.files || '{}');
   for (const [name, path] of Object.entries(files)) {
-    form.append(name, { uri: path.startsWith('file://') ? path : `file://${path}`, name: `${name}.jpg`, type: 'image/jpeg' });
+    // Expo's fetch (the global fetch in this SDK) rejects RN-style { uri } parts; File implements Blob.
+    form.append(name, new File(path.startsWith('file://') ? path : `file://${path}`));
   }
   const res = await fetch(`${API_URL}/violation`, { method: 'POST', body: form });
   return handle(res);

@@ -3,6 +3,7 @@
 // to upload, retry, edit or delete: uploading is automatic and evidence cannot be changed.
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { listOutbox } from '../services/db';
 import { onSyncStatus } from '../services/sync';
 import { describeRow, timeAgo } from '../lib/outbox';
@@ -27,6 +28,25 @@ function Banner({ sync }) {
   let tone = colors.good;
   let title = 'Online';
   let sub = sync.lastSyncAt ? `Last synced ${timeAgo(sync.lastSyncAt)}` : 'Not synced yet';
+  if (sync.blocked === 'unknown_device') {
+    // The server has no camera row for this phone's key. Linking again keeps the same key,
+    // so records already signed on this phone still pass the server's check.
+    return (
+      <View style={[ui.card, { borderLeftWidth: 4, borderLeftColor: colors.danger, marginBottom: 12 }]}>
+        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.danger }}>Phone not linked on the server</Text>
+        <Text style={{ color: colors.muted, marginTop: 2 }}>
+          Ask an admin for a new registration code, then link this phone again. Records stay safe on this phone and upload after linking.
+        </Text>
+        <Pressable
+          onPress={() => router.push('/register')}
+          style={({ pressed }) => [ui.button, { marginTop: 10 }, pressed && { opacity: 0.7 }]}
+          accessibilityRole="button"
+        >
+          <Text style={ui.buttonText}>Link this phone again</Text>
+        </Pressable>
+      </View>
+    );
+  }
   if (sync.blocked) {
     tone = colors.danger;
     title = 'Phone blocked by server';

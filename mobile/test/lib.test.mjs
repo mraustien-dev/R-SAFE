@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, webcrypto } from 'node:crypto';
 import {
-  createKeyPair, sign, verify, toBase64, fromBase64, hashPin, pinMatches, isValidPin,
+  createKeyPair, sign, verify, toBase64, fromBase64, hashPin, pinMatches, isValidPin, publicKeyFromPrivate,
 } from '../src/lib/keys.js';
 import { phTime, violationId, buildRecord, requestMessage } from '../src/lib/record.js';
 
@@ -31,6 +31,16 @@ test('phone signature passes the server check and fails when changed', async () 
   assert.ok(verify(publicKey, sig, msg));
   assert.ok(await serverVerify(publicKey, sig, msg));
   assert.equal(await serverVerify(publicKey, sig, msg + ' '), false);
+});
+
+test('public key is recovered from the private key (repairs a mixed-up pair)', async () => {
+  const a = createKeyPair(rnd);
+  const b = createKeyPair(rnd);
+  assert.equal(publicKeyFromPrivate(a.privateKey), a.publicKey);
+  // stored pair mixed by the old start-up race: a's private key with b's public key
+  const repaired = publicKeyFromPrivate(a.privateKey);
+  assert.notEqual(repaired, b.publicKey);
+  assert.ok(await serverVerify(repaired, sign(a.privateKey, 'register\n{}'), 'register\n{}'));
 });
 
 test('PIN hash', () => {
