@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.hardware.display.DisplayManager
+import android.os.Debug
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -78,6 +79,13 @@ class RsafeCameraView(context: Context, appContext: AppContext) : ExpoView(conte
   private var analysisUseCase: ImageAnalysis? = null
   private var rotation = Surface.ROTATION_0
 
+  // TEST: "1080p" (default) or "4k" detector frames; the photos come from these frames
+  @Volatile private var quality = "1080p"
+  // time to turn each camera image into an upright bitmap (grows with resolution)
+  private var convertNs = 0L
+  private var convertCount = 0
+  private var lastLongSide = 0 // analysis thread only
+
   // Motion-priority exposure (short shutter, sharp fast riders); null = phone's auto exposure
   private var exposure: ExposureController? = null
   private var exposureControl: Camera2CameraControl? = null
@@ -130,6 +138,16 @@ class RsafeCameraView(context: Context, appContext: AppContext) : ExpoView(conte
     if (active) start() else stop()
   }
 
+  fun setQuality(value: String) {
+    val q = if (value == "4k") "4k" else "1080p"
+    if (q == quality) return
+    quality = q
+    if (!active || !bound) return // used at the next bind
+    val owner = appContext.currentActivity as? LifecycleOwner ?: return
+    overlay.clear()
+    bindCamera(owner) // analyse() starts fresh tracks when the first frame of the new size arrives
+  }
+
   private fun start() {
     val owner = appContext.currentActivity as? LifecycleOwner
     if (owner == null) {
@@ -180,13 +198,16 @@ class RsafeCameraView(context: Context, appContext: AppContext) : ExpoView(conte
         val preview = Preview.Builder().setTargetRotation(rotation).build()
           .also { it.surfaceProvider = previewView.surfaceProvider }
         // 1080p: the vehicle model sees a 480 px copy (same speed), head and plate crops come
-        // from the full frame (2.25x the pixels of 720p for small, distant heads and plates)
+        // from the full frame (2.25x the pixels of 720p for small, distant heads and plates).
+        // TEST 4k: 4x the pixels of 1080p for sharper photos; the phone may give less (the
+        // screen shows the size it really gave).
+        val size = if (quality == "4k") Size(3840, 2160) else Size(1920, 1080)
         val analysis = ImageAnalysis.Builder()
           .setTargetRotation(rotation)
           .setResolutionSelector(
             ResolutionSelector.Builder()
               .setResolutionStrategy(
-                ResolutionStrategy(Size(1920, 1080), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER),
+                ResolutionStrategy(size, ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER),
               )
               .build(),
           )
@@ -273,12 +294,20 @@ class RsafeCameraView(context: Context, appContext: AppContext) : ExpoView(conte
     }
     try {
       val capturedAt = SystemClock.elapsedRealtime()
+      val c0 = System.nanoTime()
       val raw = image.toBitmap()
       val degrees = image.imageInfo.rotationDegrees
       image.close()
       val frame = if (degrees == 0) raw else {
         Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, Matrix().apply { postRotate(degrees.toFloat()) }, true)
       }
+      convertNs += System.nanoTime() - c0
+      convertCount++
+      // New resolution (1080p <-> 4K): box sizes change, as after a rotation, so hand over
+      // what is tracked and start fresh instead of mixing both sizes in one track.
+      val longSide = maxOf(frame.width, frame.height)
+      if (lastLongSide != 0 && longSide != lastLongSide) pipe.flushAll()
+      lastLongSide = longSide
       adjustExposure(frame)
       pipe.onFrame(frame, System.currentTimeMillis(), capturedAt)
       reportStats(pipe)
@@ -305,8 +334,19 @@ class RsafeCameraView(context: Context, appContext: AppContext) : ExpoView(conte
         "tracks" to s.tracks,
         "plateMs" to s.plateMs,
         "exposure" to exposureText(),
+        // TEST numbers for 1080p vs 4K
+        "quality" to quality,
+        "frameW" to s.frameW,
+        "frameH" to s.frameH,
+        "convertMs" to if (convertCount > 0) convertNs / 1e6 / convertCount else 0.0,
+        // bitmaps live in native memory (Android 8+), so count both heaps
+        "memoryMb" to (Debug.getNativeHeapAllocatedSize() +
+          Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }) / 1_048_576.0,
+        "photoKb" to s.lastPhotoBytes / 1024.0,
       ),
     )
+    convertNs = 0L
+    convertCount = 0
     statsStart = now
   }
 

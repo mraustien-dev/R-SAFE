@@ -47,6 +47,11 @@ export function createKeyPair(randomBytes32) {
   };
 }
 
+/** The public key that belongs to this private key (65-byte uncompressed point, base64). */
+export function publicKeyFromPrivate(privateKeyB64) {
+  return toBase64(p256.getPublicKey(fromBase64(privateKeyB64), false));
+}
+
 /** Base64 raw r||s signature over SHA-256(message), as the server's WebCrypto expects. */
 export function sign(privateKeyB64, message) {
   const sig = p256.sign(sha256(utf8(message)), fromBase64(privateKeyB64), { prehash: false });

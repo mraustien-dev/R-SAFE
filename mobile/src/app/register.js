@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import { registerDevice } from '../services/api';
 import { saveCamera } from '../services/device';
+import { syncNow } from '../services/sync';
 import { Button, ErrorText, Field, Form, Screen, Title } from '../ui';
 
 const MESSAGES = {
@@ -22,6 +23,7 @@ export default function Register() {
     try {
       const camera = await registerDevice(code);
       await saveCamera(camera);
+      syncNow(); // a phone linked again uploads its waiting records right away
       router.replace('/login');
     } catch (e) {
       setError(MESSAGES[e.code] ?? (e.code ? e.message : MESSAGES.network));

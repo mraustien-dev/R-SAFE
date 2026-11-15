@@ -26,6 +26,8 @@ export default function Duty() {
   const [captured, setCaptured] = useState(0);
   const [cameraOk, setCameraOk] = useState(false);
   const [showUploads, setShowUploads] = useState(false);
+  // TEST: camera size for detection + evidence photos ('1080p' | '4k')
+  const [quality, setQuality] = useState('1080p');
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const pendingWrites = useRef(Promise.resolve());
@@ -121,6 +123,7 @@ export default function Duty() {
           <RsafeCameraView
             style={{ flex: 1 }}
             active={onDuty}
+            quality={quality}
             onStatus={onStatus}
             onError={({ nativeEvent }) => setError(nativeEvent.message)}
             onViolation={onViolation}
@@ -144,10 +147,30 @@ export default function Duty() {
                   + ` (${engine.helmetMs.toFixed(0)} ms, delay ${engine.helmetLagMs.toFixed(0)} ms)`
                   + `\nqueue ${engine.queue} · tracks ${engine.tracks}`
                   + (engine.plateMs ? ` · plate ${engine.plateMs} ms` : '')
-                  + ` · ${engine.exposure}`}
+                  + ` · ${engine.exposure}`
+                  + (engine.frameW
+                    ? `
+${engine.frameW}×${engine.frameH} · convert ${engine.convertMs.toFixed(0)} ms`
+                      + ` · memory ${engine.memoryMb.toFixed(0)} MB`
+                      + (engine.photoKb ? ` · last photo ${(engine.photoKb / 1024).toFixed(1)} MB` : '')
+                    : '')}
               </Text>
             ) : null}
           </View>
+        ) : null}
+        {onDuty ? (
+          // TEST switch: compare speed, memory and photo size on the real road
+          <Pressable
+            onPress={() => setQuality((q) => (q === '4k' ? '1080p' : '4k'))}
+            accessibilityRole="button"
+            accessibilityLabel={`Camera quality ${quality === '4k' ? '4K' : '1080p'}. Tap to switch.`}
+            style={({ pressed }) => ({
+              position: 'absolute', top: 10, right: 10, backgroundColor: quality === '4k' ? '#c0392bdd' : '#000a',
+              borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>{quality === '4k' ? '4K' : '1080p'}</Text>
+          </Pressable>
         ) : null}
       </View>
 
