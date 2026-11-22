@@ -118,7 +118,7 @@ export default function Duty() {
   return (
     <Screen style={{ padding: 0, flexDirection: landscape ? 'row' : 'column' }}>
       {onDuty ? <KeepAwake /> : null}
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         {cameraOk ? (
           <RsafeCameraView
             style={{ flex: 1 }}
@@ -129,11 +129,14 @@ export default function Duty() {
             onViolation={onViolation}
           />
         ) : (
-          <Text style={{ color: '#fff', padding: 20 }}>Camera permission is needed for detection.</Text>
+          <Text style={{ color: colors.muted, padding: 20 }}>Camera permission is needed for detection.</Text>
         )}
         {onDuty ? (
-          <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: '#000a', borderRadius: 8, padding: 8 }}>
-            <Text style={{ color: '#fff', fontWeight: '600' }}>
+          <View style={{
+            position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(10, 9, 9, 0.72)', borderRadius: 10,
+            paddingVertical: 8, paddingHorizontal: 10, borderLeftWidth: 3, borderLeftColor: colors.primary,
+          }}>
+            <Text style={{ color: colors.ink, fontWeight: '700' }}>
               {engine.state === 'loading'
                 ? 'Loading models…'
                 : engine.state === 'failed'
@@ -142,7 +145,7 @@ export default function Duty() {
             </Text>
             {engine.fps ? (
               // per-stage timing: what to read out when tuning on a real road
-              <Text style={{ color: '#ddd', fontSize: 11, marginTop: 2 }}>
+              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 3, fontVariant: ['tabular-nums'] }}>
                 {`vehicle ${engine.vehicleMs.toFixed(0)} ms · helmet ${engine.helmetPerSec.toFixed(1)}/s`
                   + ` (${engine.helmetMs.toFixed(0)} ms, delay ${engine.helmetLagMs.toFixed(0)} ms)`
                   + `\nqueue ${engine.queue} · tracks ${engine.tracks}`
@@ -165,26 +168,33 @@ ${engine.frameW}×${engine.frameH} · convert ${engine.convertMs.toFixed(0)} ms`
             accessibilityRole="button"
             accessibilityLabel={`Camera quality ${quality === '4k' ? '4K' : '1080p'}. Tap to switch.`}
             style={({ pressed }) => ({
-              position: 'absolute', top: 10, right: 10, backgroundColor: quality === '4k' ? '#c0392bdd' : '#000a',
-              borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, opacity: pressed ? 0.7 : 1,
+              position: 'absolute', top: 12, right: 12,
+              backgroundColor: quality === '4k' ? colors.primary : 'rgba(10, 9, 9, 0.72)',
+              borderWidth: 1, borderColor: quality === '4k' ? colors.primary : colors.line,
+              borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ color: '#fff', fontWeight: '700' }}>{quality === '4k' ? '4K' : '1080p'}</Text>
+            <Text style={{ color: quality === '4k' ? colors.onPrimary : colors.ink, fontWeight: '700' }}>
+              {quality === '4k' ? '4K' : '1080p'}
+            </Text>
           </Pressable>
         ) : null}
       </View>
 
       <ScrollView
         style={landscape ? { width: Math.min(360, Math.max(280, width * 0.36)), flexGrow: 0 } : { flexGrow: 0 }}
-        contentContainerStyle={{ padding: 16, paddingTop: 10 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 14 }}
       >
-        <View style={{ marginBottom: 10 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.ink }}>
+        <View style={{ marginBottom: 14 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: colors.ink, letterSpacing: -0.3 }}>
             {session.officer?.full_name ?? ''}
           </Text>
-          <Text style={{ color: onDuty ? colors.good : colors.muted, marginTop: 2 }}>
-            {onDuty ? `On duty since ${new Date(session.duty.started_at).toLocaleTimeString()}` : 'Off duty'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 8, backgroundColor: onDuty ? colors.primary : colors.line }} />
+            <Text style={{ color: onDuty ? colors.ink : colors.muted }}>
+              {onDuty ? `On duty since ${new Date(session.duty.started_at).toLocaleTimeString()}` : 'Off duty'}
+            </Text>
+          </View>
         </View>
         <Pressable
           onPress={() => setShowUploads(true)}
@@ -193,11 +203,11 @@ ${engine.frameW}×${engine.frameH} · convert ${engine.convertMs.toFixed(0)} ms`
           style={({ pressed }) => [styles.card, { flexDirection: 'row', justifyContent: 'space-between', opacity: pressed ? 0.8 : 1 }]}
         >
           <View>
-            <Text style={{ color: colors.muted }}>Captured this duty</Text>
-            <Text style={{ fontSize: 22, fontWeight: '700', color: colors.ink }}>{captured}</Text>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>Captured this duty</Text>
+            <Text style={{ fontSize: 30, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'], marginTop: 2 }}>{captured}</Text>
           </View>
           <View style={{ alignItems: 'flex-end', flexShrink: 1, marginLeft: 12 }}>
-            <Text style={{ color: colors.muted }}>Upload</Text>
+            <Text style={{ color: colors.muted, fontSize: 13 }}>Upload</Text>
             <Text style={{ color: sync?.blocked ? colors.danger : colors.ink, textAlign: 'right' }}>{syncLine}</Text>
             <Text style={{ color: colors.primary, fontWeight: '600', marginTop: 4 }}>See uploads ›</Text>
           </View>

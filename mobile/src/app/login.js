@@ -56,7 +56,7 @@ export default function Login() {
               style={[
                 styles.card,
                 { marginBottom: 8 },
-                selected?.id === item.id && { borderColor: colors.primary, borderWidth: 2 },
+                selected?.id === item.id && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
               ]}
             >
               <Text style={{ fontSize: 16, fontWeight: '600', color: colors.ink }}>{item.full_name}</Text>

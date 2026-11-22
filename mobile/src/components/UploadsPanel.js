@@ -39,10 +39,10 @@ function Banner({ sync }) {
         </Text>
         <Pressable
           onPress={() => router.push('/register')}
-          style={({ pressed }) => [ui.button, { marginTop: 10 }, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [ui.button, { marginTop: 12, backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
           accessibilityRole="button"
         >
-          <Text style={ui.buttonText}>Link this phone again</Text>
+          <Text style={[ui.buttonText, { color: colors.onPrimary }]}>Link this phone again</Text>
         </Pressable>
       </View>
     );
@@ -189,11 +189,11 @@ export default function UploadsPanel({ onClose }) {
 
 const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  back: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
+  back: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
-  tabOn: { borderColor: colors.primary, borderWidth: 2 },
-  row: { flexDirection: 'row', gap: 12, padding: 12, marginBottom: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
+  tabOn: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  row: { flexDirection: 'row', gap: 12, padding: 12, marginBottom: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   thumb: { width: 56, height: 56, borderRadius: 6, backgroundColor: colors.line },
   id: { fontSize: 15, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
   meta: { fontSize: 13.5, color: colors.muted, marginTop: 2 },
