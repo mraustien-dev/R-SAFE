@@ -34,6 +34,11 @@ class RsafeDetectorModule : Module() {
         view.setActive(active)
       }
 
+      // TEST: "1080p" or "4k" camera frames for detection and evidence photos
+      Prop("quality") { view: RsafeCameraView, quality: String ->
+        view.setQuality(quality)
+      }
+
       OnViewDestroys { view: RsafeCameraView ->
         view.release()
       }

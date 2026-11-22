@@ -14,6 +14,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -188,9 +189,28 @@ class Engine(context: Context, val settings: EngineSettings = EngineSettings()) 
     null
   }
 
+  /** Size of the last frame.jpg written (bytes), for the on-screen test numbers. */
+  @Volatile var lastFrameJpegBytes = 0
+    private set
+
+  /**
+   * JPEG at quality 90. If that is over the limit (possible for a busy 4K frame), the quality
+   * steps down until it fits: the server refuses photos over 5 MB, and a refused photo would
+   * block the upload queue.
+   */
   private fun writeJpeg(bitmap: Bitmap, file: File): Map<String, Any> {
-    FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
-    val bytes = file.readBytes()
+    var quality = 90
+    var bytes: ByteArray
+    while (true) {
+      bytes = ByteArrayOutputStream().use { out ->
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+        out.toByteArray()
+      }
+      if (bytes.size <= MAX_JPEG_BYTES || quality <= 50) break
+      quality -= 10
+    }
+    FileOutputStream(file).use { it.write(bytes) }
+    if (file.name == "frame.jpg") lastFrameJpegBytes = bytes.size
     return mapOf("path" to file.absolutePath, "sha256" to sha256Hex(bytes), "bytes" to bytes.size)
   }
 
@@ -201,6 +221,9 @@ class Engine(context: Context, val settings: EngineSettings = EngineSettings()) 
     ocr.close()
   }
 }
+
+/** Under the server's 5 MB per-photo limit (device-api MAX_IMAGE_BYTES), with a margin. */
+const val MAX_JPEG_BYTES = 4_500_000
 
 fun sha256Hex(bytes: ByteArray): String =
   MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

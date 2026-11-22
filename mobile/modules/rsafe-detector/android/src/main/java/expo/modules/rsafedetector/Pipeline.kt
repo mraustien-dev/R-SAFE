@@ -54,11 +54,15 @@ class Pipeline(
   private val helmetLagNs = AtomicLong()
   @Volatile private var lastPlateMs = 0L
 
+  @Volatile private var frameW = 0
+  @Volatile private var frameH = 0
+
   // Started LAST: the thread uses every field above, which must exist before it runs.
   private val helmetThread = Thread({ helmetLoop() }, "rsafe-helmet").apply { start() }
 
   class Stats(val frames: Long, val vehicleMs: Double, val helmetChecks: Long, val helmetMs: Double,
-              val helmetLagMs: Double, val queue: Int, val tracks: Int, val plateMs: Long)
+              val helmetLagMs: Double, val queue: Int, val tracks: Int, val plateMs: Long,
+              val frameW: Int, val frameH: Int, val lastPhotoBytes: Int)
 
   /** Totals since the last call (then reset). */
   fun takeStats(): Stats {
@@ -69,6 +73,7 @@ class Pipeline(
       h, if (h > 0) helmetNs.getAndSet(0) / 1e6 / h else 0.0,
       if (h > 0) helmetLagNs.getAndSet(0) / 1e6 / h else 0.0,
       queue.size, rules.openTracks, lastPlateMs,
+      frameW, frameH, engine.lastFrameJpegBytes,
     )
   }
 
@@ -81,6 +86,11 @@ class Pipeline(
     val (motos, persons) = engine.detectVehicles(frame)
     vehicleNs.addAndGet(System.nanoTime() - t0)
     frames.incrementAndGet()
+    frameW = frame.width
+    frameH = frame.height
+    // minRiderHeightPx is for 1080p: scale it so 4K checks the same riders (same distance),
+    // only with more pixels in the photos
+    val minRiderPx = s.minRiderHeightPx * min(frame.width, frame.height) / 1080f
 
     val seen = tracker.update(motos, wallMs)
     val byMoto = associateRiders(seen.map { it.det }, persons, s.expandRatio, s.maxRiders)
@@ -95,7 +105,7 @@ class Pipeline(
       ridersOf[track.id] = riders.mapIndexed { p, r -> r.box to last[p + 1] }
 
       for ((p, rider) in riders.withIndex()) {
-        if (rider.box.height < s.minRiderHeightPx) continue
+        if (rider.box.height < minRiderPx) continue
         val r = headCropRect(rider.box, s.headRatio, s.padRatio, frame.width, frame.height) ?: continue
         queue.offer(RiderKey(track.id, p + 1), HelmetJob(frame, Rect(r[0], r[1], r[2], r[3]), rider, boxes, moto, wallMs))
       }
